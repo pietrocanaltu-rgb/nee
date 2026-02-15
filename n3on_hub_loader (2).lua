@@ -4,7 +4,7 @@
 print("[N3on Hub Loader] Starting...")
 
 -- SEUS LINKS AQUI (substitua pelo seu GitHub)
-local BASE_URL = "https://raw.githubusercontent.com/SEU_USER/n3on-hub/main/"
+local BASE_URL = "https://raw.githubusercontent.com/pietrocanaltu-rgb/nee"
 local LINKS = {
 	base = BASE_URL .. "n3on_hub_base.lua",
 	bloxfruits = BASE_URL .. "n3on_hub_bloxfruits.lua",
