@@ -8,7 +8,6 @@ end
 
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local UIS = game:GetService("UserInputService")
 local Player = game.Players.LocalPlayer
 
 print("[Build a Boat Module] Loading...")
@@ -19,15 +18,17 @@ print("[Build a Boat Module] Loading...")
 
 _G.N3onHub.SavedStates.walkOnWater = false
 _G.N3onHub.SavedStates.autoWin = false
-_G.N3onHub.SavedStates.boatFly = false
-_G.N3onHub.SavedStates.boatFlySpeed = 50
+_G.N3onHub.SavedStates.autoCollectPortals = false
+_G.N3onHub.SavedStates.infiniteJetpack = false
+_G.N3onHub.SavedStates.instantBuild = false
+_G.N3onHub.SavedStates.noClip = false
 
 local antiWaterParts = {}
-local boatFlying = false
-local boatFlySpeed = 50
 local autoWinActive = false
-local currentTween = nil
-local boatFlyConnection = nil
+local autoCollectActive = false
+local infiniteJetpackActive = false
+local instantBuildActive = false
+local noClipActive = false
 
 ----------------------------------------------------------------
 -- ANTI WATER
@@ -81,77 +82,31 @@ local function RemoveAntiWater()
 end
 
 ----------------------------------------------------------------
--- BOAT FLY
+-- AUTO COLLECT PORTALS
 ----------------------------------------------------------------
 
-local function StartBoatFly()
-	if boatFlyConnection then return end
-
-	boatFlying = true
-
-	boatFlyConnection = RunService.Heartbeat:Connect(function()
-		if not boatFlying then
-			if boatFlyConnection then
-				boatFlyConnection:Disconnect()
-				boatFlyConnection = nil
-			end
-			return
-		end
-
+local function AutoCollectPortals()
+	while autoCollectActive do
 		local char = Player.Character
-		if not char then return end
-
-		local boat = nil
-		for _, obj in pairs(workspace:GetDescendants()) do
-			if obj.Name == "VehicleSeat" and obj:IsA("VehicleSeat") and obj.Occupant == char:FindFirstChild("Humanoid") then
-				boat = obj.Parent
-				break
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		
+		if hrp then
+			for _, obj in pairs(workspace:GetDescendants()) do
+				if obj.Name == "Portal" or obj.Name == "DarknessPart" or (obj:IsA("Part") and obj.BrickColor == BrickColor.new("Dark indigo")) then
+					if obj:IsA("BasePart") then
+						hrp.CFrame = obj.CFrame
+						task.wait(0.1)
+					end
+				end
 			end
 		end
-
-		if not boat then return end
-
-		local camera = workspace.CurrentCamera
-		local moveDirection = Vector3.new(0, 0, 0)
-
-		if UIS:IsKeyDown(Enum.KeyCode.W) then
-			moveDirection = moveDirection + (camera.CFrame.LookVector)
-		end
-		if UIS:IsKeyDown(Enum.KeyCode.S) then
-			moveDirection = moveDirection - (camera.CFrame.LookVector)
-		end
-		if UIS:IsKeyDown(Enum.KeyCode.A) then
-			moveDirection = moveDirection - (camera.CFrame.RightVector)
-		end
-		if UIS:IsKeyDown(Enum.KeyCode.D) then
-			moveDirection = moveDirection + (camera.CFrame.RightVector)
-		end
-		if UIS:IsKeyDown(Enum.KeyCode.Space) then
-			moveDirection = moveDirection + Vector3.new(0, 1, 0)
-		end
-		if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then
-			moveDirection = moveDirection - Vector3.new(0, 1, 0)
-		end
-
-		for _, part in pairs(boat:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.Velocity = moveDirection.Unit * boatFlySpeed
-				part.RotVelocity = Vector3.new(0, 0, 0)
-			end
-		end
-	end)
-end
-
-local function StopBoatFly()
-	boatFlying = false
-	if boatFlyConnection then
-		boatFlyConnection:Disconnect()
-		boatFlyConnection = nil
+		
+		task.wait(0.5)
 	end
 end
 
 ----------------------------------------------------------------
--- AUTO WIN
+-- AUTO WIN (SEM PARADAS)
 ----------------------------------------------------------------
 
 local function AutoWin()
@@ -167,15 +122,9 @@ local function AutoWin()
 	local originalGravity = workspace.Gravity
 	workspace.Gravity = 0
 
-	local function restoreGravity()
-		workspace.Gravity = originalGravity
-	end
-
 	local died = false
-	local deathConnection
-	deathConnection = Humanoid.Died:Connect(function()
+	Humanoid.Died:Connect(function()
 		died = true
-		deathConnection:Disconnect()
 	end)
 
 	for _, part in ipairs(Character:GetDescendants()) do
@@ -189,115 +138,155 @@ local function AutoWin()
 	local pos3 = Vector3.new(-56, -359, 9497)
 
 	HRP.CFrame = CFrame.new(pos1)
-	task.wait(0.5)
-	if not autoWinActive then 
-		restoreGravity()
-		return 
-	end
+	task.wait(0.3)
 
-	local function SafePlay(tween)
-		tween:Play()
-		while tween.PlaybackState == Enum.PlaybackState.Playing do
-			if not autoWinActive then
-				tween:Cancel()
-				restoreGravity()
-				return false
-			end
-			if died then
-				tween:Cancel()
-				restoreGravity()
-				return false
-			end
-			task.wait()
-		end
-		return true
-	end
-
-	local speed = 500
-	local segmentDistance = 1000
-
-	local direction = (pos2 - HRP.Position).Unit
-	local totalDistance = (pos2 - HRP.Position).Magnitude
-	local traveled = 0
-
-	while traveled < totalDistance do
-		if not autoWinActive then 
-			restoreGravity()
-			return 
-		end
-
-		if died then
-			restoreGravity()
-			return
-		end
-
-		local moveDist = math.min(segmentDistance, totalDistance - traveled)
-		local nextPos = HRP.Position + direction * moveDist
-		local duration = moveDist / speed
-
-		local tween = TweenService:Create(
-			HRP,
-			TweenInfo.new(duration, Enum.EasingStyle.Linear),
-			{CFrame = CFrame.new(nextPos)}
-		)
-
-		if not SafePlay(tween) then
-			restoreGravity()
-			return 
-		end
-
-		traveled = traveled + moveDist
-
-		HRP.Anchored = true
-		local t = 0
-		while t < 0.5 do
-			if not autoWinActive then
-				HRP.Anchored = false
-				restoreGravity()
-				return
-			end
-			if died then
-				HRP.Anchored = false
-				restoreGravity()
-				return
-			end
-			t = t + task.wait()
-		end
-		HRP.Anchored = false
-	end
-
-	local distance3 = (HRP.Position - pos3).Magnitude
-	local duration3 = distance3 / 200
-
-	local finalTween = TweenService:Create(
-		HRP,
-		TweenInfo.new(duration3, Enum.EasingStyle.Linear),
-		{CFrame = CFrame.new(pos3)}
-	)
-
-	if not SafePlay(finalTween) then
-		restoreGravity()
+	if not autoWinActive or died then
+		workspace.Gravity = originalGravity
 		return
 	end
 
-	HRP.Anchored = true
-	restoreGravity()
+	-- Tween direto sem paradas
+	local distance = (pos2 - HRP.Position).Magnitude
+	local duration = distance / 500
 
-	if deathConnection then
-		deathConnection:Disconnect()
+	local tween1 = TweenService:Create(
+		HRP,
+		TweenInfo.new(duration, Enum.EasingStyle.Linear),
+		{CFrame = CFrame.new(pos2)}
+	)
+
+	tween1:Play()
+	tween1.Completed:Wait()
+
+	if not autoWinActive or died then
+		workspace.Gravity = originalGravity
+		return
 	end
+
+	task.wait(0.3)
+
+	local distance2 = (pos3 - HRP.Position).Magnitude
+	local duration2 = distance2 / 200
+
+	local tween2 = TweenService:Create(
+		HRP,
+		TweenInfo.new(duration2, Enum.EasingStyle.Linear),
+		{CFrame = CFrame.new(pos3)}
+	)
+
+	tween2:Play()
+	tween2.Completed:Wait()
+
+	HRP.Anchored = true
+	workspace.Gravity = originalGravity
 end
 
 Player.CharacterAdded:Connect(function()
 	if autoWinActive then
 		task.wait(0.5)
-		if autoWinActive then
-			spawn(function()
-				AutoWin()
-			end)
-		end
+		spawn(AutoWin)
 	end
 end)
+
+----------------------------------------------------------------
+-- INFINITE JETPACK
+----------------------------------------------------------------
+
+local function StartInfiniteJetpack()
+	infiniteJetpackActive = true
+	
+	spawn(function()
+		while infiniteJetpackActive do
+			local char = Player.Character
+			if char then
+				local jetpack = char:FindFirstChild("Jetpack")
+				if jetpack then
+					local fuel = jetpack:FindFirstChild("Fuel")
+					if fuel and fuel:IsA("NumberValue") then
+						fuel.Value = 100
+					end
+				end
+			end
+			task.wait(0.1)
+		end
+	end)
+end
+
+----------------------------------------------------------------
+-- INSTANT BUILD
+----------------------------------------------------------------
+
+local function StartInstantBuild()
+	instantBuildActive = true
+	
+	spawn(function()
+		while instantBuildActive do
+			local buildTime = game:GetService("ReplicatedStorage"):FindFirstChild("BuildTime")
+			if buildTime and buildTime:IsA("NumberValue") then
+				buildTime.Value = 0
+			end
+			task.wait(0.5)
+		end
+	end)
+end
+
+----------------------------------------------------------------
+-- NO CLIP
+----------------------------------------------------------------
+
+local noClipConnection
+
+local function StartNoClip()
+	noClipActive = true
+	
+	noClipConnection = RunService.Stepped:Connect(function()
+		if noClipActive and Player.Character then
+			for _, part in pairs(Player.Character:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = false
+				end
+			end
+		end
+	end)
+end
+
+local function StopNoClip()
+	noClipActive = false
+	if noClipConnection then
+		noClipConnection:Disconnect()
+		noClipConnection = nil
+	end
+end
+
+----------------------------------------------------------------
+-- TELEPORTS
+----------------------------------------------------------------
+
+local function TeleportToStart()
+	if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+		Player.Character.HumanoidRootPart.CFrame = CFrame.new(10, 20, 363)
+	end
+end
+
+local function TeleportToEnd()
+	if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+		Player.Character.HumanoidRootPart.CFrame = CFrame.new(-56, -359, 9497)
+	end
+end
+
+local function TeleportToStage()
+	if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+		local stages = workspace:FindFirstChild("Stages")
+		if stages then
+			for _, stage in pairs(stages:GetChildren()) do
+				if stage:IsA("Model") and stage:FindFirstChild("DarknessPart") then
+					Player.Character.HumanoidRootPart.CFrame = stage.DarknessPart.CFrame + Vector3.new(0, 10, 0)
+					break
+				end
+			end
+		end
+	end
+end
 
 ----------------------------------------------------------------
 -- LOAD BUILD A BOAT FARM TAB
@@ -320,45 +309,102 @@ local function LoadBuildABoatFarm()
 	local infoLabel = Instance.new("TextLabel", ScrollContent)
 	infoLabel.Size = UDim2.new(1, 0, 0, 70)
 	infoLabel.BackgroundTransparency = 1
-	infoLabel.Text = "Auto Win will tween you to the end chest.\nAuto-respawns when you die!"
+	infoLabel.Text = "Auto Win goes straight to end!\nAuto Collect gets all portals."
 	infoLabel.Font = Enum.Font.Gotham
 	infoLabel.TextScaled = true
 	infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 	infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+	infoLabel.TextWrapped = true
+
+	local farmTitle = Instance.new("TextLabel", ScrollContent)
+	farmTitle.Size = UDim2.new(1, 0, 0, 35)
+	farmTitle.BackgroundTransparency = 1
+	farmTitle.Text = "⚡ Auto Farm"
+	farmTitle.Font = Enum.Font.GothamBold
+	farmTitle.TextSize = 16
+	farmTitle.TextColor3 = Color3.fromRGB(255, 200, 100)
+	farmTitle.TextXAlignment = Enum.TextXAlignment.Left
 
 	_G.N3onHub.Checkbox("Auto Win", _G.N3onHub.SavedStates.autoWin, function(v)
 		_G.N3onHub.SavedStates.autoWin = v
 		autoWinActive = v
-		if v then
-			spawn(function()
-				AutoWin()
-			end)
-		else
-			if currentTween then
-				currentTween:Cancel()
-			end
-		end
+		if v then spawn(AutoWin) end
 	end)
 
-	_G.N3onHub.Checkbox("Boat Fly", _G.N3onHub.SavedStates.boatFly or false, function(v)
-		_G.N3onHub.SavedStates.boatFly = v
-		if v then
-			StartBoatFly()
-		else
-			StopBoatFly()
-		end
+	_G.N3onHub.Checkbox("Auto Collect Portals", _G.N3onHub.SavedStates.autoCollectPortals, function(v)
+		_G.N3onHub.SavedStates.autoCollectPortals = v
+		autoCollectActive = v
+		if v then spawn(AutoCollectPortals) end
 	end)
 
-	_G.N3onHub.Slider("Boat Fly Speed", 10, 200, _G.N3onHub.SavedStates.boatFlySpeed, function(v)
-		_G.N3onHub.SavedStates.boatFlySpeed = v
-		boatFlySpeed = v
+	local boostTitle = Instance.new("TextLabel", ScrollContent)
+	boostTitle.Size = UDim2.new(1, 0, 0, 35)
+	boostTitle.BackgroundTransparency = 1
+	boostTitle.Text = "🚀 Boosts"
+	boostTitle.Font = Enum.Font.GothamBold
+	boostTitle.TextSize = 16
+	boostTitle.TextColor3 = Color3.fromRGB(100, 200, 255)
+	boostTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+	_G.N3onHub.Checkbox("Infinite Jetpack", _G.N3onHub.SavedStates.infiniteJetpack, function(v)
+		_G.N3onHub.SavedStates.infiniteJetpack = v
+		if v then StartInfiniteJetpack() else infiniteJetpackActive = false end
 	end)
+
+	_G.N3onHub.Checkbox("Instant Build", _G.N3onHub.SavedStates.instantBuild, function(v)
+		_G.N3onHub.SavedStates.instantBuild = v
+		if v then StartInstantBuild() else instantBuildActive = false end
+	end)
+
+	_G.N3onHub.Checkbox("No Clip", _G.N3onHub.SavedStates.noClip, function(v)
+		_G.N3onHub.SavedStates.noClip = v
+		if v then StartNoClip() else StopNoClip() end
+	end)
+
+	local tpTitle = Instance.new("TextLabel", ScrollContent)
+	tpTitle.Size = UDim2.new(1, 0, 0, 35)
+	tpTitle.BackgroundTransparency = 1
+	tpTitle.Text = "📍 Teleports"
+	tpTitle.Font = Enum.Font.GothamBold
+	tpTitle.TextSize = 16
+	tpTitle.TextColor3 = Color3.fromRGB(255, 255, 100)
+	tpTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+	local tpStartBtn = Instance.new("TextButton", ScrollContent)
+	tpStartBtn.Size = UDim2.new(1, 0, 0, 40)
+	tpStartBtn.Text = "🏁 TP to Start"
+	tpStartBtn.Font = Enum.Font.GothamBold
+	tpStartBtn.TextSize = 14
+	tpStartBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 120)
+	tpStartBtn.TextColor3 = Color3.new(1, 1, 1)
+	Instance.new("UICorner", tpStartBtn)
+	tpStartBtn.MouseButton1Click:Connect(TeleportToStart)
+
+	local tpEndBtn = Instance.new("TextButton", ScrollContent)
+	tpEndBtn.Size = UDim2.new(1, 0, 0, 40)
+	tpEndBtn.Text = "🎯 TP to End"
+	tpEndBtn.Font = Enum.Font.GothamBold
+	tpEndBtn.TextSize = 14
+	tpEndBtn.BackgroundColor3 = Color3.fromRGB(120, 60, 180)
+	tpEndBtn.TextColor3 = Color3.new(1, 1, 1)
+	Instance.new("UICorner", tpEndBtn)
+	tpEndBtn.MouseButton1Click:Connect(TeleportToEnd)
+
+	local tpStageBtn = Instance.new("TextButton", ScrollContent)
+	tpStageBtn.Size = UDim2.new(1, 0, 0, 40)
+	tpStageBtn.Text = "🌟 TP to Current Stage"
+	tpStageBtn.Font = Enum.Font.GothamBold
+	tpStageBtn.TextSize = 14
+	tpStageBtn.BackgroundColor3 = Color3.fromRGB(100, 50, 150)
+	tpStageBtn.TextColor3 = Color3.new(1, 1, 1)
+	Instance.new("UICorner", tpStageBtn)
+	tpStageBtn.MouseButton1Click:Connect(TeleportToStage)
 
 	UpdateCanvasSize()
 end
 
 ----------------------------------------------------------------
--- LOAD PLAYER TAB (WITH WALK ON WATER)
+-- LOAD PLAYER TAB
 ----------------------------------------------------------------
 
 local originalLoadPlayer = _G.N3onHub.LoadPlayer
@@ -366,25 +412,21 @@ local originalLoadPlayer = _G.N3onHub.LoadPlayer
 local function LoadPlayerBuildABoat()
 	originalLoadPlayer()
 	
-	_G.N3onHub.Checkbox("Walk on water", _G.N3onHub.SavedStates.walkOnWater, function(v)
+	_G.N3onHub.Slider("Fly Speed", 10, 500, _G.N3onHub.SavedStates.flySpeed or 50, function(v)
+		_G.N3onHub.SavedStates.flySpeed = v
+	end)
+	
+	_G.N3onHub.Checkbox("Walk on Water", _G.N3onHub.SavedStates.walkOnWater, function(v)
 		_G.N3onHub.SavedStates.walkOnWater = v
-		if v then
-			CreateAntiWater()
-		else
-			RemoveAntiWater()
-		end
+		if v then CreateAntiWater() else RemoveAntiWater() end
 	end)
 end
 
--- Sobrescreve a função Player com a versão Build a Boat
 _G.N3onHub.LoadPlayer = LoadPlayerBuildABoat
 
--- Atualiza o botão Player se já existir
 for _, btn in pairs(_G.N3onHub.GUI.F2:GetChildren()) do
 	if btn:IsA("TextButton") and btn.Text:find("Player") then
-		btn.MouseButton1Click:Connect(function()
-			LoadPlayerBuildABoat()
-		end)
+		btn.MouseButton1Click:Connect(LoadPlayerBuildABoat)
 	end
 end
 
@@ -394,4 +436,5 @@ end
 
 _G.N3onHub.Tab("Farm","🚀",160, LoadBuildABoatFarm)
 
-print("[Build a Boat Module] Loaded successfully! Auto Win, Boat Fly, and Walk on Water ready.")
+print("[Build a Boat Module] Loaded!")
+print("Features: Auto Win, Auto Portals, Infinite Jetpack, Instant Build, No Clip, Super Fly (500 speed)")
