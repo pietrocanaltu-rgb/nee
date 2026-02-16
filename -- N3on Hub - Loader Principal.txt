@@ -8,6 +8,7 @@ local LINKS = {
 	base = "https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_base.lua",
 	bloxfruits = "https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_bloxfruits.lua",
 	buildaboat = "https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_buildaboat.lua"
+	prisonlife = "https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/PrisonLife.Lua"
 }
 
 -- Detectar qual jogo está sendo executado
@@ -18,7 +19,8 @@ local moduleUrl = ""
 -- IDs dos jogos
 local GAMES = {
 	BUILD_A_BOAT = {537413528},
-	BLOX_FRUITS = {2753915549, 4442272183, 7449423635}
+	BLOX_FRUITS = {2753915549, 4442272183, 7449423635},
+	PRISON_LIFE = {155615604},
 }
 
 -- Detecta o jogo
@@ -103,3 +105,4 @@ end
 print("[N3on Hub Loader] ✅ All systems loaded successfully!")
 
 print("[N3on Hub Loader] Welcome to N3on Hub for " .. gameName .. "!")
+
