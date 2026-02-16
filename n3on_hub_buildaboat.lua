@@ -21,7 +21,6 @@ _G.N3onHub.SavedStates.walkOnWater = false
 _G.N3onHub.SavedStates.autoWin = false
 _G.N3onHub.SavedStates.boatFly = false
 _G.N3onHub.SavedStates.boatFlySpeed = 50
-_G.N3onHub.SavedStates.removeObstacles = false
 
 local antiWaterParts = {}
 local boatFlying = false
@@ -29,7 +28,6 @@ local boatFlySpeed = 50
 local autoWinActive = false
 local currentTween = nil
 local boatFlyConnection = nil
-local removedObstacles = {}
 
 ----------------------------------------------------------------
 -- ANTI WATER
@@ -80,42 +78,6 @@ local function RemoveAntiWater()
 		end
 	end
 	antiWaterParts = {}
-end
-
-----------------------------------------------------------------
--- REMOVE OBSTACLES
-----------------------------------------------------------------
-
-local function RemoveObstacles()
-	-- Remover pedras, obstáculos e partes de kill
-	for _, obj in pairs(workspace:GetDescendants()) do
-		if obj:IsA("Model") then
-			if obj.Name:lower():find("rock") or obj.Name:lower():find("obstacle") or obj.Name:lower():find("wall") then
-				table.insert(removedObstacles, {obj = obj, parent = obj.Parent})
-				obj.Parent = nil
-			end
-		elseif obj:IsA("Part") then
-			if obj.Name:lower():find("rock") or obj.Name:lower():find("kill") or obj.Name:lower():find("lava") or obj.Name:lower():find("damage") then
-				table.insert(removedObstacles, {obj = obj, cancollide = obj.CanCollide, transparency = obj.Transparency})
-				obj.CanCollide = false
-				obj.Transparency = 1
-			end
-		end
-	end
-end
-
-local function RestoreObstacles()
-	for _, data in pairs(removedObstacles) do
-		if data.obj then
-			if data.parent then
-				data.obj.Parent = data.parent
-			elseif data.cancollide ~= nil then
-				data.obj.CanCollide = data.cancollide
-				data.obj.Transparency = data.transparency
-			end
-		end
-	end
-	removedObstacles = {}
 end
 
 ----------------------------------------------------------------
@@ -220,7 +182,6 @@ local function AutoWin()
 	local pos2 = Vector3.new(-57, 90, 8631)
 	local pos3 = Vector3.new(-56, -359, 9497)
 
-	-- Teleportar para o início
 	HRP.CFrame = CFrame.new(pos1)
 	task.wait(0.3)
 
@@ -229,7 +190,7 @@ local function AutoWin()
 		return
 	end
 
-	-- Tween direto para pos2 SEM PARADAS
+	-- Tween direto sem paradas
 	local distance1 = (pos2 - HRP.Position).Magnitude
 	local duration1 = distance1 / 500
 
@@ -249,7 +210,6 @@ local function AutoWin()
 
 	task.wait(0.3)
 
-	-- Tween final para o chest
 	local distance2 = (pos3 - HRP.Position).Magnitude
 	local duration2 = distance2 / 200
 
@@ -298,7 +258,7 @@ local function LoadBuildABoatFarm()
 	local infoLabel = Instance.new("TextLabel", ScrollContent)
 	infoLabel.Size = UDim2.new(1, 0, 0, 70)
 	infoLabel.BackgroundTransparency = 1
-	infoLabel.Text = "Auto Win goes straight to the end!\nNo stops, fast and smooth."
+	infoLabel.Text = "Auto Win will tween you to the end chest.\nAuto-respawns when you die!"
 	infoLabel.Font = Enum.Font.Gotham
 	infoLabel.TextScaled = true
 	infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -315,15 +275,6 @@ local function LoadBuildABoatFarm()
 			if currentTween then
 				currentTween:Cancel()
 			end
-		end
-	end)
-
-	_G.N3onHub.Checkbox("Remove Obstacles", _G.N3onHub.SavedStates.removeObstacles, function(v)
-		_G.N3onHub.SavedStates.removeObstacles = v
-		if v then
-			RemoveObstacles()
-		else
-			RestoreObstacles()
 		end
 	end)
 
@@ -381,5 +332,4 @@ end
 
 _G.N3onHub.Tab("Farm","🚀",160, LoadBuildABoatFarm)
 
-print("[Build a Boat Module] Loaded successfully!")
-print("[Build a Boat Module] Auto Win (no stops), Remove Obstacles, Boat Fly, Walk on Water ready!")
+print("[Build a Boat Module] Loaded successfully! Auto Win, Boat Fly, and Walk on Water ready.")
