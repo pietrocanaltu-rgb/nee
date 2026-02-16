@@ -22,13 +22,7 @@ local chestConnections = {}
 local autoChestActive = false
 local autoChestTween = nil
 
-_G.N3onHub.SavedStates.autoChest = false
-_G.N3onHub.SavedStates.tweenSpeed = 1
-_G.N3onHub.SavedStates.hitboxExpander = false
-_G.N3onHub.SavedStates.hitboxSize = 50
-
-local modifiedEnemies = {}
-local originalSizes = {}
+local originalHandSizes = {}
 local hitboxConnection = nil
 
 local function IsChestIgnored(chest)
@@ -159,69 +153,61 @@ local function StopAutoChest()
 end
 
 ----------------------------------------------------------------
--- HITBOX EXPANDER SYSTEM
+-- HITBOX EXPANDER SYSTEM (LOCAL PLAYER HANDS)
 ----------------------------------------------------------------
 
-local function ExpandEnemyHitbox(enemy)
-	if not enemy or not enemy:IsA("Model") then return end
-	if modifiedEnemies[enemy] then return end
+local function ExpandPlayerHands()
+	local char = Player.Character
+	if not char then return end
 	
-	local torso = enemy:FindFirstChild("Torso") or enemy:FindFirstChild("UpperTorso")
-	if not torso or not torso:IsA("BasePart") then return end
+	-- Procurar as mãos do jogador
+	local leftHand = char:FindFirstChild("Left Hand") or char:FindFirstChild("Left Arm") or char:FindFirstChild("LeftHand") or char:FindFirstChild("LeftLowerArm")
+	local rightHand = char:FindFirstChild("Right Hand") or char:FindFirstChild("Right Arm") or char:FindFirstChild("RightHand") or char:FindFirstChild("RightLowerArm")
 	
-	-- Salvar tamanho original
-	if not originalSizes[enemy] then
-		originalSizes[enemy] = {}
+	if not leftHand and not rightHand then return end
+	
+	local hitboxSize = _G.N3onHub.SavedStates.hitboxSize or 50
+	
+	-- Expandir mão esquerda
+	if leftHand and leftHand:IsA("BasePart") then
+		if not originalHandSizes[leftHand] then
+			originalHandSizes[leftHand] = leftHand.Size
+		end
+		leftHand.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+		leftHand.Transparency = 1
+		leftHand.CanCollide = false
 	end
 	
-	originalSizes[enemy][torso] = torso.Size
-	
-	-- Expandir hitbox do torso
-	local hitboxSize = _G.N3onHub.SavedStates.hitboxSize or 50
-	torso.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
-	torso.Transparency = 1
-	torso.CanCollide = false
-	
-	modifiedEnemies[enemy] = true
+	-- Expandir mão direita
+	if rightHand and rightHand:IsA("BasePart") then
+		if not originalHandSizes[rightHand] then
+			originalHandSizes[rightHand] = rightHand.Size
+		end
+		rightHand.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+		rightHand.Transparency = 1
+		rightHand.CanCollide = false
+	end
 end
 
-local function RestoreEnemyHitbox(enemy)
-	if not enemy or not originalSizes[enemy] then return end
+local function RestorePlayerHands()
+	local char = Player.Character
+	if not char then return end
 	
-	for part, originalSize in pairs(originalSizes[enemy]) do
-		if part and part.Parent then
-			part.Size = originalSize
-			part.Transparency = 0
-			part.CanCollide = true
+	for hand, originalSize in pairs(originalHandSizes) do
+		if hand and hand.Parent then
+			hand.Size = originalSize
+			hand.Transparency = 0
+			hand.CanCollide = true
 		end
 	end
 	
-	originalSizes[enemy] = nil
-	modifiedEnemies[enemy] = nil
-end
-
-local function RestoreAllHitboxes()
-	for enemy, _ in pairs(modifiedEnemies) do
-		RestoreEnemyHitbox(enemy)
-	end
-	modifiedEnemies = {}
-	originalSizes = {}
+	originalHandSizes = {}
 end
 
 local function StartHitboxExpander()
 	hitboxConnection = RunService.Heartbeat:Connect(function()
 		if _G.N3onHub.SavedStates.hitboxExpander then
-			local enemiesFolder = workspace:FindFirstChild("Enemies")
-			if enemiesFolder then
-				for _, enemy in ipairs(enemiesFolder:GetChildren()) do
-					if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") then
-						local humanoid = enemy.Humanoid
-						if humanoid.Health > 0 then
-							ExpandEnemyHitbox(enemy)
-						end
-					end
-				end
-			end
+			ExpandPlayerHands()
 		end
 	end)
 end
@@ -231,7 +217,7 @@ local function StopHitboxExpander()
 		hitboxConnection:Disconnect()
 		hitboxConnection = nil
 	end
-	RestoreAllHitboxes()
+	RestorePlayerHands()
 end
 
 ----------------------------------------------------------------
@@ -336,7 +322,7 @@ local function LoadBloxFruitsFarm()
 	local hitboxTitle = Instance.new("TextLabel", ScrollContent)
 	hitboxTitle.Size = UDim2.new(1, 0, 0, 40)
 	hitboxTitle.BackgroundTransparency = 1
-	hitboxTitle.Text = "⚔️ Hitbox Expander"
+	hitboxTitle.Text = "👐 Hitbox Expander (YOUR HANDS)"
 	hitboxTitle.Font = Enum.Font.GothamBold
 	hitboxTitle.TextScaled = true
 	hitboxTitle.TextColor3 = Color3.fromRGB(255, 100, 100)
@@ -344,7 +330,7 @@ local function LoadBloxFruitsFarm()
 	local hitboxInfo = Instance.new("TextLabel", ScrollContent)
 	hitboxInfo.Size = UDim2.new(1, 0, 0, 60)
 	hitboxInfo.BackgroundTransparency = 1
-	hitboxInfo.Text = "Expands enemy torso hitbox, making them easier to hit.\nEnemies become invisible and have no collision."
+	hitboxInfo.Text = "Expands YOUR OWN hands hitbox, making it easier to hit enemies.\nYour hands become invisible and have no collision."
 	hitboxInfo.Font = Enum.Font.Gotham
 	hitboxInfo.TextScaled = true
 	hitboxInfo.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -364,14 +350,9 @@ local function LoadBloxFruitsFarm()
 	_G.N3onHub.Slider("Hitbox Size", 0, 100, _G.N3onHub.SavedStates.hitboxSize or 50, function(v)
 		_G.N3onHub.SavedStates.hitboxSize = v
 		
-		-- Atualizar hitboxes já expandidos
+		-- Atualizar hitboxes das mãos do jogador imediatamente
 		if _G.N3onHub.SavedStates.hitboxExpander then
-			for enemy, _ in pairs(modifiedEnemies) do
-				local torso = enemy:FindFirstChild("Torso") or enemy:FindFirstChild("UpperTorso")
-				if torso and torso:IsA("BasePart") then
-					torso.Size = Vector3.new(v, v, v)
-				end
-			end
+			ExpandPlayerHands()
 		end
 	end)
 
@@ -382,14 +363,26 @@ end
 -- REGISTER TAB
 ----------------------------------------------------------------
 
+-- Garantir que SavedStates existem
+if not _G.N3onHub.SavedStates then
+	_G.N3onHub.SavedStates = {}
+end
+
+_G.N3onHub.SavedStates.autoChest = _G.N3onHub.SavedStates.autoChest or false
+_G.N3onHub.SavedStates.tweenSpeed = _G.N3onHub.SavedStates.tweenSpeed or 1
+_G.N3onHub.SavedStates.hitboxExpander = _G.N3onHub.SavedStates.hitboxExpander or false
+_G.N3onHub.SavedStates.hitboxSize = _G.N3onHub.SavedStates.hitboxSize or 50
+
 _G.N3onHub.Tab("Farm","🎁",160, LoadBloxFruitsFarm)
 
 -- Iniciar hitbox expander se estava ativo
 if _G.N3onHub.SavedStates.hitboxExpander then
-	StartHitboxExpander()
+	task.spawn(function()
+		StartHitboxExpander()
+	end)
 end
 
 print("[Blox Fruits Module] Loaded successfully!")
 print("[Blox Fruits Module] Features:")
 print("- Auto Chest system")
-print("- Hitbox Expander (0-100)")
+print("- YOUR Hands Hitbox Expander (0-100)")
