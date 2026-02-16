@@ -1,0 +1,20 @@
+-- N3on Hub - Ultra Simple Loader
+
+-- Carregar base
+loadstring(game:HttpGet("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_base.lua"))()
+
+repeat task.wait() until _G.N3onHub
+
+-- Carregar módulo do jogo
+if game.PlaceId == 2753915549 or game.PlaceId == 4442272183 or game.PlaceId == 7449423635 then
+    -- Blox Fruits
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_bloxfruits.lua"))()
+    
+elseif game.PlaceId == 537413528 then
+    -- Build a Boat
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_buildaboat.lua"))()
+    
+elseif game.PlaceId == 155615604 then
+    -- Prison Life
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/PrisonLife.Lua"))()
+end
