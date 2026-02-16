@@ -7,7 +7,7 @@ print("[N3on Hub Loader] Starting...")
 local LINKS = {
 	base = "https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_base.lua",
 	bloxfruits = "https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_bloxfruits.lua",
-	buildaboat = "https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_buildaboat.lua"
+	buildaboat = "https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_buildaboat.lua",
 	prisonlife = "https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/PrisonLife.Lua"
 }
 
@@ -105,4 +105,5 @@ end
 print("[N3on Hub Loader] ✅ All systems loaded successfully!")
 
 print("[N3on Hub Loader] Welcome to N3on Hub for " .. gameName .. "!")
+
 
