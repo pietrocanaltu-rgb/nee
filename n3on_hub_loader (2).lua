@@ -1,14 +1,13 @@
 -- N3on Hub - Loader Principal
--- Detecta o jogo e carrega os módulos apropriados
+-- Cole seus links RAW do GitHub aqui
 
 print("[N3on Hub Loader] Starting...")
 
--- SEUS LINKS AQUI (substitua pelo seu GitHub)
-local BASE_URL = "https://raw.githubusercontent.com/pietrocanaltu-rgb/nee"
+-- 🔗 COLE SEUS LINKS RAW AQUI 🔗
 local LINKS = {
-	base = BASE_URL .. "n3on_hub_base.lua",
-	bloxfruits = BASE_URL .. "n3on_hub_bloxfruits.lua",
-	buildaboat = BASE_URL .. "n3on_hub_buildaboat.lua"
+	base = "https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_base.lua",
+	bloxfruits = "https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_bloxfruits.lua",
+	buildaboat = "https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_buildaboat.lua"
 }
 
 -- Detectar qual jogo está sendo executado
