@@ -7,6 +7,7 @@ if not _G.N3onHub then
 end
 
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local Player = game.Players.LocalPlayer
 
 print("[Blox Fruits Module] Loading...")
@@ -23,6 +24,12 @@ local autoChestTween = nil
 
 _G.N3onHub.SavedStates.autoChest = false
 _G.N3onHub.SavedStates.tweenSpeed = 1
+_G.N3onHub.SavedStates.hitboxExpander = false
+_G.N3onHub.SavedStates.hitboxSize = 50
+
+local modifiedEnemies = {}
+local originalSizes = {}
+local hitboxConnection = nil
 
 local function IsChestIgnored(chest)
 	if ignoredChests[chest] then
@@ -152,6 +159,82 @@ local function StopAutoChest()
 end
 
 ----------------------------------------------------------------
+-- HITBOX EXPANDER SYSTEM
+----------------------------------------------------------------
+
+local function ExpandEnemyHitbox(enemy)
+	if not enemy or not enemy:IsA("Model") then return end
+	if modifiedEnemies[enemy] then return end
+	
+	local torso = enemy:FindFirstChild("Torso") or enemy:FindFirstChild("UpperTorso")
+	if not torso or not torso:IsA("BasePart") then return end
+	
+	-- Salvar tamanho original
+	if not originalSizes[enemy] then
+		originalSizes[enemy] = {}
+	end
+	
+	originalSizes[enemy][torso] = torso.Size
+	
+	-- Expandir hitbox do torso
+	local hitboxSize = _G.N3onHub.SavedStates.hitboxSize or 50
+	torso.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+	torso.Transparency = 1
+	torso.CanCollide = false
+	
+	modifiedEnemies[enemy] = true
+end
+
+local function RestoreEnemyHitbox(enemy)
+	if not enemy or not originalSizes[enemy] then return end
+	
+	for part, originalSize in pairs(originalSizes[enemy]) do
+		if part and part.Parent then
+			part.Size = originalSize
+			part.Transparency = 0
+			part.CanCollide = true
+		end
+	end
+	
+	originalSizes[enemy] = nil
+	modifiedEnemies[enemy] = nil
+end
+
+local function RestoreAllHitboxes()
+	for enemy, _ in pairs(modifiedEnemies) do
+		RestoreEnemyHitbox(enemy)
+	end
+	modifiedEnemies = {}
+	originalSizes = {}
+end
+
+local function StartHitboxExpander()
+	hitboxConnection = RunService.Heartbeat:Connect(function()
+		if _G.N3onHub.SavedStates.hitboxExpander then
+			local enemiesFolder = workspace:FindFirstChild("Enemies")
+			if enemiesFolder then
+				for _, enemy in ipairs(enemiesFolder:GetChildren()) do
+					if enemy:IsA("Model") and enemy:FindFirstChild("Humanoid") then
+						local humanoid = enemy.Humanoid
+						if humanoid.Health > 0 then
+							ExpandEnemyHitbox(enemy)
+						end
+					end
+				end
+			end
+		end
+	end)
+end
+
+local function StopHitboxExpander()
+	if hitboxConnection then
+		hitboxConnection:Disconnect()
+		hitboxConnection = nil
+	end
+	RestoreAllHitboxes()
+end
+
+----------------------------------------------------------------
 -- LOAD BLOX FRUITS FARM TAB
 ----------------------------------------------------------------
 
@@ -179,6 +262,7 @@ local function LoadBloxFruitsFarm()
 	infoLabel.TextXAlignment = Enum.TextXAlignment.Left
 	infoLabel.TextWrapped = true
 
+	-- Chest Status
 	local statusLabel = Instance.new("TextLabel", ScrollContent)
 	statusLabel.Size = UDim2.new(1, 0, 0, 50)
 	statusLabel.BackgroundColor3 = Color3.fromRGB(40, 20, 70)
@@ -230,6 +314,7 @@ local function LoadBloxFruitsFarm()
 		ignoredChests = {}
 	end)
 
+	-- Auto Collect Chests
 	_G.N3onHub.Checkbox("Auto Collect Chests", _G.N3onHub.SavedStates.autoChest or false, function(v)
 		_G.N3onHub.SavedStates.autoChest = v
 		autoChestActive = v
@@ -247,6 +332,49 @@ local function LoadBloxFruitsFarm()
 		_G.N3onHub.SavedStates.tweenSpeed = v
 	end)
 
+	-- Hitbox Expander Section
+	local hitboxTitle = Instance.new("TextLabel", ScrollContent)
+	hitboxTitle.Size = UDim2.new(1, 0, 0, 40)
+	hitboxTitle.BackgroundTransparency = 1
+	hitboxTitle.Text = "⚔️ Hitbox Expander"
+	hitboxTitle.Font = Enum.Font.GothamBold
+	hitboxTitle.TextScaled = true
+	hitboxTitle.TextColor3 = Color3.fromRGB(255, 100, 100)
+
+	local hitboxInfo = Instance.new("TextLabel", ScrollContent)
+	hitboxInfo.Size = UDim2.new(1, 0, 0, 60)
+	hitboxInfo.BackgroundTransparency = 1
+	hitboxInfo.Text = "Expands enemy torso hitbox, making them easier to hit.\nEnemies become invisible and have no collision."
+	hitboxInfo.Font = Enum.Font.Gotham
+	hitboxInfo.TextScaled = true
+	hitboxInfo.TextColor3 = Color3.fromRGB(200, 200, 200)
+	hitboxInfo.TextXAlignment = Enum.TextXAlignment.Left
+	hitboxInfo.TextWrapped = true
+
+	_G.N3onHub.Checkbox("Enable Hitbox Expander", _G.N3onHub.SavedStates.hitboxExpander or false, function(v)
+		_G.N3onHub.SavedStates.hitboxExpander = v
+
+		if v then
+			StartHitboxExpander()
+		else
+			StopHitboxExpander()
+		end
+	end)
+
+	_G.N3onHub.Slider("Hitbox Size", 0, 100, _G.N3onHub.SavedStates.hitboxSize or 50, function(v)
+		_G.N3onHub.SavedStates.hitboxSize = v
+		
+		-- Atualizar hitboxes já expandidos
+		if _G.N3onHub.SavedStates.hitboxExpander then
+			for enemy, _ in pairs(modifiedEnemies) do
+				local torso = enemy:FindFirstChild("Torso") or enemy:FindFirstChild("UpperTorso")
+				if torso and torso:IsA("BasePart") then
+					torso.Size = Vector3.new(v, v, v)
+				end
+			end
+		end
+	end)
+
 	UpdateCanvasSize()
 end
 
@@ -256,4 +384,12 @@ end
 
 _G.N3onHub.Tab("Farm","🎁",160, LoadBloxFruitsFarm)
 
-print("[Blox Fruits Module] Loaded successfully! Auto Chest system ready.")
+-- Iniciar hitbox expander se estava ativo
+if _G.N3onHub.SavedStates.hitboxExpander then
+	StartHitboxExpander()
+end
+
+print("[Blox Fruits Module] Loaded successfully!")
+print("[Blox Fruits Module] Features:")
+print("- Auto Chest system")
+print("- Hitbox Expander (0-100)")
