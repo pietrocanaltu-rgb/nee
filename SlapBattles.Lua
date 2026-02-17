@@ -420,11 +420,21 @@ local function AutoFarmLoop()
 	local onPause    = false
 
 	while autoFarmActive do
-		-- a cada 3s de farm, pausa por 3s
+		-- a cada 3s de farm, pausa por 3s (para tudo e ancora o HRP)
 		if not onPause and tick() - farmTimer >= 3 then
 			onPause = true
 			StopContinuousTween()
+
+			-- ancora o HRP pra ficar parado no lugar
+			local hrpPause = GetHRP()
+			if hrpPause then hrpPause.Anchored = true end
+
 			task.wait(3)
+
+			-- desancora antes de continuar
+			local hrpResume = GetHRP()
+			if hrpResume then hrpResume.Anchored = false end
+
 			onPause   = false
 			farmTimer = tick()
 			continue
