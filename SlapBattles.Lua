@@ -647,7 +647,7 @@ local function AutoFarmLoop()
 		-- a cada 5 clicks, pausa 3s
 		if totalClicks % 5 == 0 then
 			StopContinuousTween()
-			task.wait(3)
+			task.wait(1)
 		end
 
 		-- avança pro próximo player
