@@ -328,6 +328,10 @@ end
 -- AUTO CLICK + AUTO FARM
 ----------------------------------------------------------------
 
+----------------------------------------------------------------
+-- CLICK CORRIGIDO (SEM VIM / SEM BUG DE GUI)
+----------------------------------------------------------------
+
 local ClickDelay = 0.08
 local HoldTime   = 0.02
 
@@ -449,14 +453,15 @@ local function HasDangerousTool(plr)
 end
 
 ----------------------------------------------------------------
--- TARGET
+-- TARGET — retorna TODOS os players válidos no range (ordenados por distância)
 ----------------------------------------------------------------
 
-local function GetClosestInRange()
+local function GetAllInRange()
 	local hrp = GetHRP()
-	if not hrp then return nil end
-	local closest, best = nil, math.huge
+	if not hrp then return {} end
 	local range = _G.N3onHub.SavedStates.farmRange
+
+	local list = {}
 
 	for _, plr in pairs(Players:GetPlayers()) do
 		if plr == Player then continue end
@@ -467,14 +472,21 @@ local function GetClosestInRange()
 			if HasDangerousTool(plr) then return end
 			if tHum.Health > 0 then
 				local d = (hrp.Position - tHRP.Position).Magnitude
-				if d < best and d <= range then
-					closest = plr
-					best = d
+				if d <= range then
+					table.insert(list, {plr = plr, dist = d})
 				end
 			end
 		end)
 	end
-	return closest
+
+	-- ordena do mais próximo ao mais longe
+	table.sort(list, function(a, b) return a.dist < b.dist end)
+
+	local result = {}
+	for _, entry in ipairs(list) do
+		table.insert(result, entry.plr)
+	end
+	return result
 end
 
 ----------------------------------------------------------------
@@ -530,7 +542,46 @@ local function StopContinuousTween()
 end
 
 ----------------------------------------------------------------
--- AUTO FARM LOOP
+-- Ataca um único target pelo tempo configurado (clicks no ciclo)
+----------------------------------------------------------------
+
+local CLICKS_PER_TARGET = 8  -- quantos clicks faz antes de trocar de target
+
+local function AttackTarget(target)
+	if not target or not target.Character then return end
+
+	local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
+	local tHum = target.Character:FindFirstChild("Humanoid")
+	if not tHRP or not tHum or tHum.Health <= 0 then return end
+
+	StartContinuousTween(
+		function()
+			local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+			if t then
+				return t.Position + Vector3.new(0, -_G.N3onHub.SavedStates.farmDistance, 0)
+			end
+		end,
+		function()
+			local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+			if t then return t.Position end
+		end
+	)
+
+	local clicks = 0
+	while autoFarmActive and clicks < CLICKS_PER_TARGET do
+		-- verifica se o target ainda é válido
+		if not target.Character then break end
+		local h = target.Character:FindFirstChild("Humanoid")
+		if not h or h.Health <= 0 then break end
+
+		Click()
+		clicks = clicks + 1
+		task.wait(0.05)
+	end
+end
+
+----------------------------------------------------------------
+-- AUTO FARM LOOP — cicla por todos os targets no range
 ----------------------------------------------------------------
 
 local function AutoFarmLoop()
@@ -539,6 +590,7 @@ local function AutoFarmLoop()
 
 	while autoFarmActive do
 
+		-- pausa anti-kick a cada 5s
 		if not onPause and tick() - farmTimer >= 5 then
 			onPause = true
 			StopContinuousTween()
@@ -565,6 +617,7 @@ local function AutoFarmLoop()
 			continue
 		end
 
+		-- se estiver no lobby, vai pro teleport
 		if IsInsideLobby(hrp.Position) then
 			local tpPos = GetLobbyTeleport()
 			if tpPos then
@@ -584,37 +637,26 @@ local function AutoFarmLoop()
 			continue
 		end
 
-		local target = GetClosestInRange()
-		if target and target.Character then
-			local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
-			if tHRP then
+		-- pega TODOS os targets no range
+		local targets = GetAllInRange()
 
-				StartContinuousTween(
-					function()
-						local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-						if t then
-							return t.Position + Vector3.new(0, -_G.N3onHub.SavedStates.farmDistance, 0)
-						end
-					end,
-					function()
-						local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-						if t then return t.Position end
-					end
-				)
+		if #targets > 0 then
+			-- cicla por cada target da lista
+			for _, target in ipairs(targets) do
+				if not autoFarmActive then break end
 
-				local t0 = tick()
-				while autoFarmActive and tick() - t0 < 0.5 do
-					Click()
-					task.wait(0.05)
-				end
+				-- re-checa se a pausa anti-kick já chegou
+				if tick() - farmTimer >= 5 then break end
 
-				continue
+				AttackTarget(target)
+				task.wait(0.05) -- pequena pausa entre targets
 			end
+		else
+			-- sem targets: fica clicando no lugar
+			StopContinuousTween()
+			Click()
+			task.wait(0.1)
 		end
-
-		StopContinuousTween()
-		Click()
-		task.wait(0.1)
 	end
 
 	StopContinuousTween()
