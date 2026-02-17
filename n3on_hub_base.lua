@@ -319,14 +319,12 @@ local infjump = false
 local flying = false
 local flySpeed = 50
 
--- Loop para manter WalkSpeed e JumpPower
 local speedLoopActive = false
 local jumpLoopActive = false
 
 local function StartSpeedLoop()
 	if speedLoopActive then return end
 	speedLoopActive = true
-	
 	spawn(function()
 		while speedLoopActive do
 			local hum = GetHum()
@@ -341,7 +339,6 @@ end
 local function StartJumpLoop()
 	if jumpLoopActive then return end
 	jumpLoopActive = true
-	
 	spawn(function()
 		while jumpLoopActive do
 			local hum = GetHum()
@@ -360,7 +357,6 @@ Player.CharacterAdded:Connect(function()
 	task.wait(0.5)
 	StartSpeedLoop()
 	StartJumpLoop()
-	
 	local hum = GetHum()
 	if hum then
 		hum.WalkSpeed = savedStates.speed
@@ -371,7 +367,6 @@ end)
 RunService.Heartbeat:Connect(function()
 	if not noclip then return end
 	if not Player.Character then return end
-
 	for _, part in ipairs(Player.Character:GetDescendants()) do
 		if part:IsA("BasePart") then
 			part.CanCollide = false
@@ -418,19 +413,18 @@ local function CreateFlyControls()
 		return btn
 	end
 
-	local UpBtn = CreateButton("▲", UDim2.fromOffset(65, 0))
-	local DownBtn = CreateButton("▼", UDim2.fromOffset(65, 130))
-	local LeftBtn = CreateButton("◄", UDim2.fromOffset(0, 65))
+	local UpBtn    = CreateButton("▲", UDim2.fromOffset(65, 0))
+	local DownBtn  = CreateButton("▼", UDim2.fromOffset(65, 130))
+	local LeftBtn  = CreateButton("◄", UDim2.fromOffset(0, 65))
 	local RightBtn = CreateButton("►", UDim2.fromOffset(130, 65))
-
-	local RiseBtn = CreateButton("△", UDim2.fromOffset(65, 30), UDim2.fromOffset(50, 30))
-	local FallBtn = CreateButton("▽", UDim2.fromOffset(65, 100), UDim2.fromOffset(50, 30))
+	local RiseBtn  = CreateButton("△", UDim2.fromOffset(65, 30), UDim2.fromOffset(50, 30))
+	local FallBtn  = CreateButton("▽", UDim2.fromOffset(65, 100), UDim2.fromOffset(50, 30))
 
 	local buttons = {
-		W = {pressed = false, btn = UpBtn},
-		S = {pressed = false, btn = DownBtn},
-		A = {pressed = false, btn = LeftBtn},
-		D = {pressed = false, btn = RightBtn},
+		W     = {pressed = false, btn = UpBtn},
+		S     = {pressed = false, btn = DownBtn},
+		A     = {pressed = false, btn = LeftBtn},
+		D     = {pressed = false, btn = RightBtn},
 		Space = {pressed = false, btn = RiseBtn},
 		Shift = {pressed = false, btn = FallBtn}
 	}
@@ -442,7 +436,6 @@ local function CreateFlyControls()
 				data.btn.BackgroundColor3 = Color3.fromRGB(140, 0, 255)
 			end
 		end)
-
 		data.btn.InputEnded:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
 				data.pressed = false
@@ -466,13 +459,11 @@ local mobileButtons
 
 local function StartFly()
 	if flyConnection then return end
-
 	flying = true
 	mobileButtons = CreateFlyControls()
 
 	local char = Player.Character
 	if not char then return end
-
 	local hrp = char:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
@@ -487,10 +478,7 @@ local function StartFly()
 
 	flyConnection = RunService.Heartbeat:Connect(function()
 		if not flying or not char or not char.Parent then
-			if flyConnection then
-				flyConnection:Disconnect()
-				flyConnection = nil
-			end
+			if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
 			if bg then bg:Destroy() end
 			if bv then bv:Destroy() end
 			return
@@ -500,18 +488,17 @@ local function StartFly()
 		bg.CFrame = camera.CFrame
 
 		local moveDirection = Vector3.new(0, 0, 0)
-
 		if UIS:IsKeyDown(Enum.KeyCode.W) or (mobileButtons and mobileButtons.W.pressed) then
-			moveDirection = moveDirection + (camera.CFrame.LookVector)
+			moveDirection = moveDirection + camera.CFrame.LookVector
 		end
 		if UIS:IsKeyDown(Enum.KeyCode.S) or (mobileButtons and mobileButtons.S.pressed) then
-			moveDirection = moveDirection - (camera.CFrame.LookVector)
+			moveDirection = moveDirection - camera.CFrame.LookVector
 		end
 		if UIS:IsKeyDown(Enum.KeyCode.A) or (mobileButtons and mobileButtons.A.pressed) then
-			moveDirection = moveDirection - (camera.CFrame.RightVector)
+			moveDirection = moveDirection - camera.CFrame.RightVector
 		end
 		if UIS:IsKeyDown(Enum.KeyCode.D) or (mobileButtons and mobileButtons.D.pressed) then
-			moveDirection = moveDirection + (camera.CFrame.RightVector)
+			moveDirection = moveDirection + camera.CFrame.RightVector
 		end
 		if UIS:IsKeyDown(Enum.KeyCode.Space) or (mobileButtons and mobileButtons.Space.pressed) then
 			moveDirection = moveDirection + Vector3.new(0, 1, 0)
@@ -520,31 +507,20 @@ local function StartFly()
 			moveDirection = moveDirection - Vector3.new(0, 1, 0)
 		end
 
-		if moveDirection.Magnitude > 0 then
-			bv.Velocity = moveDirection.Unit * flySpeed
-		else
-			bv.Velocity = Vector3.new(0, 0, 0)
-		end
+		bv.Velocity = if moveDirection.Magnitude > 0 then moveDirection.Unit * flySpeed else Vector3.new(0,0,0)
 	end)
 end
 
 local function StopFly()
 	flying = false
 	RemoveFlyControls()
-
-	if flyConnection then
-		flyConnection:Disconnect()
-		flyConnection = nil
-	end
-
+	if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
 	local char = Player.Character
 	if char then
 		local hrp = char:FindFirstChild("HumanoidRootPart")
 		if hrp then
 			for _, obj in pairs(hrp:GetChildren()) do
-				if obj:IsA("BodyGyro") or obj:IsA("BodyVelocity") then
-					obj:Destroy()
-				end
+				if obj:IsA("BodyGyro") or obj:IsA("BodyVelocity") then obj:Destroy() end
 			end
 		end
 	end
@@ -560,36 +536,28 @@ local function LoadPlayer()
 	Slider("Speed",1,200,savedStates.speed,function(v)
 		savedStates.speed = v
 		local hum = GetHum()
-		if hum then
-			hum.WalkSpeed = v
-		end
+		if hum then hum.WalkSpeed = v end
 	end)
 
 	Slider("JumpPower",1,200,savedStates.jumpPower,function(v)
 		savedStates.jumpPower = v
 		local hum = GetHum()
-		if hum then
-			hum.JumpPower = v
-		end
+		if hum then hum.JumpPower = v end
 	end)
 
 	Checkbox("Noclip",savedStates.noclip,function(v)
 		savedStates.noclip = v
-		noclip=v
+		noclip = v
 	end)
 
 	Checkbox("Infinite Jump",savedStates.infjump,function(v)
 		savedStates.infjump = v
-		infjump=v
+		infjump = v
 	end)
 
 	Checkbox("Fly",savedStates.fly,function(v)
 		savedStates.fly = v
-		if v then
-			StartFly()
-		else
-			StopFly()
-		end
+		if v then StartFly() else StopFly() end
 	end)
 
 	Slider("Fly Speed",10,200,savedStates.flySpeed,function(v)
@@ -599,29 +567,38 @@ local function LoadPlayer()
 end
 
 ----------------------------------------------------------------
--- SIDEBAR
+-- SIDEBAR - SISTEMA AUTOMÁTICO DE Y
+-- Cada Tab() chamado empilha automaticamente sem precisar
+-- passar Y manualmente. O 3º argumento (y) é IGNORADO,
+-- mantido só por compatibilidade com o módulo existente.
 ----------------------------------------------------------------
 
-local function Tab(name,emoji,y,callback)
-	local b=Instance.new("TextButton",F2)
-	b.Size=UDim2.new(1,-20,0,40)
-	b.Position=UDim2.fromOffset(10,y)
-	b.Text=emoji.." "..name
-	b.Font=Enum.Font.GothamBold
-	b.TextScaled=true
-	b.TextColor3=Color3.new(1,1,1)
-	b.BackgroundColor3=Color3.fromRGB(60,20,90)
-	Instance.new("UICorner",b)
+local tabY = 10  -- começa em 10px de padding
+local TAB_H = 50 -- altura de cada botão + espaçamento
+
+local function Tab(name, emoji, _ignoredY, callback)
+	local b = Instance.new("TextButton", F2)
+	b.Size             = UDim2.new(1, -20, 0, 40)
+	b.Position         = UDim2.fromOffset(10, tabY)
+	b.Text             = emoji .. " " .. name
+	b.Font             = Enum.Font.GothamBold
+	b.TextScaled       = true
+	b.TextColor3       = Color3.new(1, 1, 1)
+	b.BackgroundColor3 = Color3.fromRGB(60, 20, 90)
+	Instance.new("UICorner", b)
 
 	b.MouseButton1Click:Connect(callback)
+
+	tabY = tabY + TAB_H  -- próximo tab vai 50px abaixo
 end
 
-_G.N3onHub.Tab = Tab
-_G.N3onHub.LoadHome = LoadHome
+_G.N3onHub.Tab        = Tab
+_G.N3onHub.LoadHome   = LoadHome
 _G.N3onHub.LoadPlayer = LoadPlayer
 
-Tab("Home","🏠",40,LoadHome)
-Tab("Player","👤",100,LoadPlayer)
+-- Registra os tabs do base
+Tab("Home",   "🏠", 0, LoadHome)
+Tab("Player", "👤", 0, LoadPlayer)
 
 LoadHome()
 
@@ -629,30 +606,29 @@ LoadHome()
 -- MINIMIZE SYSTEM
 ----------------------------------------------------------------
 
-local Mini=false
+local Mini  = false
 local Bubble
 
 MinBtn.MouseButton1Click:Connect(function()
 	if Mini then return end
-	Mini=true
+	Mini = true
+	F1.Visible = false
+	F2.Visible = false
 
-	F1.Visible=false
-	F2.Visible=false
-
-	Bubble=Instance.new("TextButton",Hub)
-	Bubble.Size=UDim2.fromOffset(60,60)
-	Bubble.Position=UDim2.new(.8,0,.6,0)
-	Bubble.Text="N3"
-	Bubble.Font=Enum.Font.GothamBold
-	Bubble.TextScaled=true
-	Bubble.BackgroundColor3=Color3.fromRGB(140,0,255)
-	Instance.new("UICorner",Bubble).CornerRadius=UDim.new(1,0)
+	Bubble = Instance.new("TextButton", Hub)
+	Bubble.Size             = UDim2.fromOffset(60, 60)
+	Bubble.Position         = UDim2.new(.8, 0, .6, 0)
+	Bubble.Text             = "N3"
+	Bubble.Font             = Enum.Font.GothamBold
+	Bubble.TextScaled       = true
+	Bubble.BackgroundColor3 = Color3.fromRGB(140, 0, 255)
+	Instance.new("UICorner", Bubble).CornerRadius = UDim.new(1, 0)
 
 	Bubble.MouseButton1Click:Connect(function()
-		F1.Visible=true
-		F2.Visible=true
+		F1.Visible = true
+		F2.Visible = true
 		Bubble:Destroy()
-		Mini=false
+		Mini = false
 	end)
 end)
 
@@ -661,49 +637,44 @@ end)
 ----------------------------------------------------------------
 
 CloseBtn.MouseButton1Click:Connect(function()
-	local pop=Instance.new("Frame",Hub)
-	pop.Size=UDim2.fromOffset(300,150)
-	pop.Position=UDim2.fromScale(.5,.5)
-	pop.AnchorPoint=Vector2.new(.5,.5)
-	pop.BackgroundColor3=Color3.fromRGB(40,0,60)
-	Instance.new("UICorner",pop)
+	local pop = Instance.new("Frame", Hub)
+	pop.Size        = UDim2.fromOffset(300, 150)
+	pop.Position    = UDim2.fromScale(.5, .5)
+	pop.AnchorPoint = Vector2.new(.5, .5)
+	pop.BackgroundColor3 = Color3.fromRGB(40, 0, 60)
+	Instance.new("UICorner", pop)
 
-	local txt=Instance.new("TextLabel",pop)
-	txt.Size=UDim2.new(1,-20,1,-60)
-	txt.Position=UDim2.fromOffset(10,10)
-	txt.BackgroundTransparency=1
-	txt.Text="Are you sure?\nYou must re-execute the script to open again."
-	txt.TextScaled=true
-	txt.Font=Enum.Font.GothamBold
-	txt.TextColor3=Color3.new(1,1,1)
+	local txt = Instance.new("TextLabel", pop)
+	txt.Size               = UDim2.new(1, -20, 1, -60)
+	txt.Position           = UDim2.fromOffset(10, 10)
+	txt.BackgroundTransparency = 1
+	txt.Text               = "Are you sure?\nYou must re-execute the script to open again."
+	txt.TextScaled         = true
+	txt.Font               = Enum.Font.GothamBold
+	txt.TextColor3         = Color3.new(1, 1, 1)
 
-	local yes=Instance.new("TextButton",pop)
-	yes.Size=UDim2.fromOffset(100,30)
-	yes.Position=UDim2.new(.25,-50,1,-40)
-	yes.Text="Yes"
-	yes.Font=Enum.Font.GothamBold
-	yes.TextScaled=true
-	yes.BackgroundColor3=Color3.fromRGB(80,40,120)
-	yes.TextColor3=Color3.new(1,1,1)
-	Instance.new("UICorner",yes)
+	local yes = Instance.new("TextButton", pop)
+	yes.Size             = UDim2.fromOffset(100, 30)
+	yes.Position         = UDim2.new(.25, -50, 1, -40)
+	yes.Text             = "Yes"
+	yes.Font             = Enum.Font.GothamBold
+	yes.TextScaled       = true
+	yes.BackgroundColor3 = Color3.fromRGB(80, 40, 120)
+	yes.TextColor3       = Color3.new(1, 1, 1)
+	Instance.new("UICorner", yes)
 
-	local no=Instance.new("TextButton",pop)
-	no.Size=UDim2.fromOffset(100,30)
-	no.Position=UDim2.new(.75,-50,1,-40)
-	no.Text="No"
-	no.Font=Enum.Font.GothamBold
-	no.TextScaled=true
-	no.BackgroundColor3=Color3.fromRGB(80,40,120)
-	no.TextColor3=Color3.new(1,1,1)
-	Instance.new("UICorner",no)
+	local no = Instance.new("TextButton", pop)
+	no.Size             = UDim2.fromOffset(100, 30)
+	no.Position         = UDim2.new(.75, -50, 1, -40)
+	no.Text             = "No"
+	no.Font             = Enum.Font.GothamBold
+	no.TextScaled       = true
+	no.BackgroundColor3 = Color3.fromRGB(80, 40, 120)
+	no.TextColor3       = Color3.new(1, 1, 1)
+	Instance.new("UICorner", no)
 
-	yes.MouseButton1Click:Connect(function()
-		Hub:Destroy()
-	end)
-
-	no.MouseButton1Click:Connect(function()
-		pop:Destroy()
-	end)
+	yes.MouseButton1Click:Connect(function() Hub:Destroy() end)
+	no.MouseButton1Click:Connect(function() pop:Destroy() end)
 end)
 
 print("[N3on Hub] Base loaded successfully! Ready for game modules.")
