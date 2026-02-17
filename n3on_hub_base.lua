@@ -8,12 +8,6 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
--- Evita carregar duas vezes
-if _G.N3onHub and _G.N3onHub._loaded then
-	warn("[N3on Hub] Já carregado! Ignorando segunda execução.")
-	return
-end
-
 ----------------------------------------------------------------
 -- GUI BASE
 ----------------------------------------------------------------
