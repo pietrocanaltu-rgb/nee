@@ -210,7 +210,7 @@ listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateCanvasS
 _G.N3onHub = _G.N3onHub or {}
 _G.N3onHub = {}
 _G.N3onHub._loaded = true
-_G.N3onHub.GUI = {)
+_G.N3onHub.GUI = {}
 Hub = Hub,
 F1 = F1,
 _G.N3onHub.GUI = {
