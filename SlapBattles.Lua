@@ -416,7 +416,20 @@ local function StopContinuousTween()
 end
 
 local function AutoFarmLoop()
+	local farmTimer  = tick()  -- conta os 10s ativos
+	local onPause    = false
+
 	while autoFarmActive do
+		-- pausa de 3s a cada 10s
+		if not onPause and tick() - farmTimer >= 10 then
+			onPause = true
+			StopContinuousTween()
+			task.wait(3)
+			onPause    = false
+			farmTimer  = tick()
+			continue
+		end
+
 		local hrp = GetHRP()
 		local hum = GetHum()
 		if not hrp or not hum or hum.Health <= 0 then
@@ -442,14 +455,12 @@ local function AutoFarmLoop()
 			local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
 			if tHRP then
 				StartContinuousTween(function()
-					-- atualiza a posição alvo continuamente
 					local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
 					if t then
 						return t.Position + Vector3.new(0, -_G.N3onHub.SavedStates.farmDistance, 0)
 					end
 					return nil
 				end)
-				-- clica enquanto persegue
 				local t0 = tick()
 				while autoFarmActive and tick() - t0 < 0.5 do
 					Click()
