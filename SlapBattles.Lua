@@ -462,7 +462,7 @@ local function AutoFarmLoop()
 
 	while autoFarmActive do
 		-- a cada 3s de farm, pausa por 3s (para tudo e ancora o HRP)
-		if not onPause and tick() - farmTimer >= 3 then
+		if not onPause and tick() - farmTimer >= 5 then
 			onPause = true
 			StopContinuousTween()
 
@@ -470,7 +470,7 @@ local function AutoFarmLoop()
 			local hrpPause = GetHRP()
 			if hrpPause then hrpPause.Anchored = true end
 
-			task.wait(3)
+			task.wait(1.5)
 
 			-- desancora antes de continuar
 			local hrpResume = GetHRP()
