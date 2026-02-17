@@ -20,7 +20,6 @@ print("[Slap Battles Module] Loading...")
 
 _G.N3onHub.SavedStates.autoFarm       = false
 _G.N3onHub.SavedStates.farmSpeed      = 30
-_G.N3onHub.SavedStates.farmDistance   = 5
 _G.N3onHub.SavedStates.farmRange      = 100
 _G.N3onHub.SavedStates.auraEnabled    = false
 _G.N3onHub.SavedStates.auraSize       = 20
@@ -189,10 +188,6 @@ end)
 -- KILL AURA
 ----------------------------------------------------------------
 
-----------------------------------------------------------------
--- AURA CLICK FIX (SEM VIM)
-----------------------------------------------------------------
-
 RunService.Heartbeat:Connect(function()
 
 	if not auraActive then return end
@@ -215,14 +210,12 @@ RunService.Heartbeat:Connect(function()
 			local dist = (hrp.Position - tHRP.Position).Magnitude
 			if dist > _G.N3onHub.SavedStates.auraSize then return end
 
-			-- pega sua tool equipada
 			local myChar = Player.Character
 			if not myChar then return end
 
 			local tool = myChar:FindFirstChildOfClass("Tool")
 			if not tool then return end
 
-			-- ativa ataque
 			pcall(function()
 				tool:Activate()
 			end)
@@ -238,6 +231,7 @@ RunService.Heartbeat:Connect(function()
 	end
 
 end)
+
 ----------------------------------------------------------------
 -- ANTI KNOCKBACK
 ----------------------------------------------------------------
@@ -325,23 +319,15 @@ local function DisableClickTP()
 end
 
 ----------------------------------------------------------------
--- AUTO CLICK + AUTO FARM
-----------------------------------------------------------------
-
-----------------------------------------------------------------
 -- CLICK CORRIGIDO (SEM VIM / SEM BUG DE GUI)
 ----------------------------------------------------------------
 
 local ClickDelay = 0.08
 local HoldTime   = 0.02
-
-local lastClick = 0
+local lastClick  = 0
 
 local function Click()
-
-	if tick() - lastClick < ClickDelay then
-		return
-	end
+	if tick() - lastClick < ClickDelay then return end
 	lastClick = tick()
 
 	local char = Player.Character
@@ -353,18 +339,9 @@ local function Click()
 	local tool = char:FindFirstChildOfClass("Tool")
 	if not tool then return end
 
-	pcall(function()
-		tool:Activate()
-	end)
-
-	if HoldTime > 0 then
-		task.wait(HoldTime)
-	end
-
-	pcall(function()
-		tool:Deactivate()
-	end)
-
+	pcall(function() tool:Activate() end)
+	if HoldTime > 0 then task.wait(HoldTime) end
+	pcall(function() tool:Deactivate() end)
 end
 
 ----------------------------------------------------------------
@@ -453,7 +430,7 @@ local function HasDangerousTool(plr)
 end
 
 ----------------------------------------------------------------
--- TARGET — retorna TODOS os players válidos no range (ordenados por distância)
+-- TARGET — retorna TODOS os players válidos no range
 ----------------------------------------------------------------
 
 local function GetAllInRange()
@@ -489,7 +466,7 @@ local function GetAllInRange()
 end
 
 ----------------------------------------------------------------
--- TWEEN — move e OLHA para o target usando CFrame.lookAt
+-- TWEEN — move e olha para o target com CFrame.lookAt
 ----------------------------------------------------------------
 
 local farmConn = nil
@@ -515,13 +492,11 @@ local function StartContinuousTween(goalGetter, lookAtGetter)
 			local dist = (hrp.Position - goalPos).Magnitude
 			local dur = math.max(dist / (_G.N3onHub.SavedStates.farmSpeed * 10), 0.05)
 
-			-- monta a CFrame já com rotação olhando pro target (flat no Y)
 			local goalCFrame
 			if lookAtGetter then
 				local lookPos = lookAtGetter()
 				if lookPos then
 					local flatLook = Vector3.new(lookPos.X, goalPos.Y, lookPos.Z)
-					-- evita lookAt com posições idênticas
 					if (flatLook - goalPos).Magnitude > 0.01 then
 						goalCFrame = CFrame.lookAt(goalPos, flatLook)
 					else
@@ -551,11 +526,12 @@ end
 
 ----------------------------------------------------------------
 -- Ataca um único target:
---   • para 2 studs de distância no eixo X do target
---   • usa CFrame.lookAt para ficar olhando direto pra ele
+--   • 2 studs de distância no eixo X
+--   • CFrame.lookAt olhando pro target
+--   • pausa 0.5s a cada 10 slaps
 ----------------------------------------------------------------
 
-local CLICKS_PER_TARGET = 8  -- clicks antes de trocar de target
+local CLICKS_PER_TARGET = 8
 
 local function AttackTarget(target)
 	if not target or not target.Character then return end
@@ -567,13 +543,9 @@ local function AttackTarget(target)
 	StartContinuousTween(
 		function()
 			local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-			if t then
-				-- 2 studs de distância no eixo X (lado do target, acompanha em tempo real)
-				return t.Position + Vector3.new(2, 0, 0)
-			end
+			if t then return t.Position + Vector3.new(2, 0, 0) end
 		end,
 		function()
-			-- lookAt aponta para o centro do target
 			local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
 			if t then return t.Position end
 		end
@@ -588,7 +560,6 @@ local function AttackTarget(target)
 		Click()
 		clicks = clicks + 1
 
-		-- a cada 10 slaps, pausa 0.5s antes de continuar
 		if clicks % 10 == 0 then
 			task.wait(0.5)
 		else
@@ -607,7 +578,6 @@ local function AutoFarmLoop()
 
 	while autoFarmActive do
 
-		-- pausa anti-kick a cada 5s
 		if not onPause and tick() - farmTimer >= 5 then
 			onPause = true
 			StopContinuousTween()
@@ -634,7 +604,6 @@ local function AutoFarmLoop()
 			continue
 		end
 
-		-- se estiver no lobby, vai pro teleport
 		if IsInsideLobby(hrp.Position) then
 			local tpPos = GetLobbyTeleport()
 			if tpPos then
@@ -654,19 +623,16 @@ local function AutoFarmLoop()
 			continue
 		end
 
-		-- pega TODOS os targets válidos no range
 		local targets = GetAllInRange()
 
 		if #targets > 0 then
 			for _, target in ipairs(targets) do
 				if not autoFarmActive then break end
 				if tick() - farmTimer >= 5 then break end
-
 				AttackTarget(target)
-				task.wait(0.05) -- pausa entre targets
+				task.wait(0.05)
 			end
 		else
-			-- sem targets: fica clicando no lugar
 			StopContinuousTween()
 			Click()
 			task.wait(0.1)
@@ -675,6 +641,7 @@ local function AutoFarmLoop()
 
 	StopContinuousTween()
 end
+
 ----------------------------------------------------------------
 -- TAB: FARM
 ----------------------------------------------------------------
@@ -714,14 +681,6 @@ local function LoadFarmTab()
 
 	_G.N3onHub.Slider("Tween Speed", 5, 100, _G.N3onHub.SavedStates.farmSpeed, function(v)
 		_G.N3onHub.SavedStates.farmSpeed = v
-	end)
-
-	_G.N3onHub.Slider("Farm Distance (Y offset)", 0, 50, _G.N3onHub.SavedStates.farmDistance, function(v)
-		_G.N3onHub.SavedStates.farmDistance = v
-	end)
-
-	_G.N3onHub.Slider("Farm Range (studs)", 10, 500, _G.N3onHub.SavedStates.farmRange, function(v)
-		_G.N3onHub.SavedStates.farmRange = v
 	end)
 
 	-- HITBOX via loadstring
@@ -950,7 +909,6 @@ end
 
 ----------------------------------------------------------------
 -- REGISTRAR TABS
--- O 3º argumento é ignorado pelo base (Y automático)
 ----------------------------------------------------------------
 
 _G.N3onHub.Tab("Farm", "👏", 0, LoadFarmTab)
