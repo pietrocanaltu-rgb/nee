@@ -354,6 +354,33 @@ local function GetLobbyTeleport()
 	return nil
 end
 
+-- Tools perigosas — ignora quem tiver qualquer uma delas (case insensitive)
+local DANGEROUS_TOOLS = {"overkill", "error", "the flex"}
+
+local function HasDangerousTool(plr)
+	local function checkName(name)
+		local lower = name:lower()
+		for _, t in ipairs(DANGEROUS_TOOLS) do
+			if lower == t then return true end
+		end
+		return false
+	end
+	-- verifica no Character (tool equipada)
+	if plr.Character then
+		for _, obj in pairs(plr.Character:GetChildren()) do
+			if obj:IsA("Tool") and checkName(obj.Name) then return true end
+		end
+	end
+	-- verifica na Backpack
+	local bp = plr:FindFirstChild("Backpack")
+	if bp then
+		for _, obj in pairs(bp:GetChildren()) do
+			if obj:IsA("Tool") and checkName(obj.Name) then return true end
+		end
+	end
+	return false
+end
+
 local function GetClosestInRange()
 	local hrp = GetHRP()
 	if not hrp then return nil end
@@ -367,6 +394,8 @@ local function GetClosestInRange()
 			local tHum = plr.Character.Humanoid
 			-- ignora players dentro do Lobby
 			if IsInsideLobby(tHRP.Position) then return end
+			-- ignora players com tools perigosas
+			if HasDangerousTool(plr) then return end
 			if tHum.Health > 0 then
 				local d = (hrp.Position - tHRP.Position).Magnitude
 				if d < best and d <= range then closest = plr; best = d end
@@ -377,9 +406,10 @@ local function GetClosestInRange()
 end
 
 -- Tween contínuo: recria o tween sempre apontando pra posição atual do alvo
+-- lookAtGetter: função opcional que retorna a posição pra olhar
 local farmConn = nil
 
-local function StartContinuousTween(goalGetter)
+local function StartContinuousTween(goalGetter, lookAtGetter)
 	if activeTween then activeTween:Cancel(); activeTween = nil end
 	if farmConn then farmConn:Disconnect(); farmConn = nil end
 
@@ -396,7 +426,18 @@ local function StartContinuousTween(goalGetter)
 		local goalPos = goalGetter()
 		if not goalPos then return end
 
-		-- Só recria o tween se não tiver um rodando ou se o alvo mudou de posição
+		-- Olha pro alvo enquanto se move
+		if lookAtGetter then
+			local lookPos = lookAtGetter()
+			if lookPos then
+				local dir = (lookPos - hrp.Position) * Vector3.new(1, 0, 1) -- só no plano horizontal
+				if dir.Magnitude > 0.1 then
+					hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + dir) * CFrame.Angles(0, 0, 0)
+				end
+			end
+		end
+
+		-- Só recria o tween se não tiver um rodando
 		if not activeTween or activeTween.PlaybackState ~= Enum.PlaybackState.Playing then
 			local dist = (hrp.Position - goalPos).Magnitude
 			local dur = math.max(dist / (_G.N3onHub.SavedStates.farmSpeed * 10), 0.05)
@@ -450,12 +491,23 @@ local function AutoFarmLoop()
 
 		-- Verifica se EU estou no Lobby → vai pro Teleport1
 		if IsInsideLobby(hrp.Position) then
-			StopContinuousTween()
 			local tpPos = GetLobbyTeleport()
 			if tpPos then
-				StartContinuousTween(function() return tpPos end)
+				local distToTp = (hrp.Position - tpPos).Magnitude
+				if distToTp > 5 then
+					-- ainda longe do portal, vai até ele sem olhar pra ninguém
+					StartContinuousTween(function() return tpPos end, nil)
+					task.wait(0.2)
+				else
+					-- chegou no portal! para tudo, espera 3s SEM ancorar e continua
+					StopContinuousTween()
+					task.wait(3)
+					farmTimer = tick() -- reseta o timer pra não pausar logo depois
+				end
+			else
+				StopContinuousTween()
+				task.wait(0.2)
 			end
-			task.wait(0.2)
 			continue
 		end
 
@@ -464,13 +516,19 @@ local function AutoFarmLoop()
 		if target and target.Character then
 			local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
 			if tHRP then
-				StartContinuousTween(function()
-					local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-					if t then
-						return t.Position + Vector3.new(0, -_G.N3onHub.SavedStates.farmDistance, 0)
+				-- passa o goalGetter E o lookAtGetter (posição do rosto/HRP do alvo)
+				StartContinuousTween(
+					function()
+						local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+						if t then return t.Position + Vector3.new(0, -_G.N3onHub.SavedStates.farmDistance, 0) end
+						return nil
+					end,
+					function()
+						local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+						if t then return t.Position end
+						return nil
 					end
-					return nil
-				end)
+				)
 				local t0 = tick()
 				while autoFarmActive and tick() - t0 < 0.5 do
 					Click()
