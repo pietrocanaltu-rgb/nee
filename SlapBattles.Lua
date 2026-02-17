@@ -416,17 +416,17 @@ local function StopContinuousTween()
 end
 
 local function AutoFarmLoop()
-	local farmTimer  = tick()  -- conta os 10s ativos
+	local farmTimer  = tick()  -- conta os 3s ativos
 	local onPause    = false
 
 	while autoFarmActive do
-		-- pausa de 3s a cada 10s
-		if not onPause and tick() - farmTimer >= 10 then
+		-- a cada 3s de farm, pausa por 3s
+		if not onPause and tick() - farmTimer >= 3 then
 			onPause = true
 			StopContinuousTween()
 			task.wait(3)
-			onPause    = false
-			farmTimer  = tick()
+			onPause   = false
+			farmTimer = tick()
 			continue
 		end
 
