@@ -14,6 +14,7 @@ local Player           = Players.LocalPlayer
 
 print("[Slap Battles Module] Loading...")
 
+
 ----------------------------------------------------------------
 -- SAVED STATES
 ----------------------------------------------------------------
@@ -68,6 +69,27 @@ local function GetHum()
 	local c = Player.Character
 	return c and c:FindFirstChild("Humanoid")
 end
+
+----------------------------------------------------------------
+-- REMOVE INFINITE JUMP
+-- Desativa qualquer infinite jump ativo no hub base ou global
+----------------------------------------------------------------
+
+-- zera flags globais comuns usadas por scripts de infinite jump
+if _G.InfiniteJump ~= nil then _G.InfiniteJump = false end
+if _G.N3onHub and _G.N3onHub.SavedStates and _G.N3onHub.SavedStates.infiniteJump ~= nil then
+	_G.N3onHub.SavedStates.infiniteJump = false
+end
+
+-- impede pular no ar: desliga e religa Jumping a cada pulo
+UserInputService.JumpRequest:Connect(function()
+	local hum = GetHum()
+	if hum then
+		hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+		task.wait(0.05)
+		hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+	end
+end)
 
 ----------------------------------------------------------------
 -- SAFE ZONE
