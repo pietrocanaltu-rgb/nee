@@ -527,17 +527,31 @@ end
 
 ----------------------------------------------------------------
 -- AUTO FARM LOOP
--- Lógica: por player, dá 1 click, troca de target, repeat.
--- A cada 5 clicks TOTAIS faz pausa de 3s.
--- O tween é atualizado toda vez que troca de target.
+-- Click roda em task separada o tempo todo.
+-- Loop principal só move o player pro target atual e alterna.
+-- Posição: atrás do target (Z -4 no espaço local do target).
 ----------------------------------------------------------------
 
 local function AutoFarmLoop()
-	local farmTimer    = tick()
-	local onPause      = false
-	local farmIndex    = 1   -- alterna entre players
-	local totalClicks  = 0   -- contador global para a pausa de 5 clicks
+	local farmTimer   = tick()
+	local onPause     = false
+	local farmIndex   = 1
+	local totalClicks = 0
 
+	-- task de click: roda SEMPRE, independente de movimento
+	task.spawn(function()
+		while autoFarmActive do
+			Click()
+			totalClicks = totalClicks + 1
+			if totalClicks % 5 == 0 then
+				task.wait(3)
+			else
+				task.wait(0.05)
+			end
+		end
+	end)
+
+	-- loop de movimento: alterna target e atualiza tween
 	while autoFarmActive do
 
 		-- pausa anti-kick a cada 5s
@@ -587,49 +601,33 @@ local function AutoFarmLoop()
 		if #targets == 0 then
 			farmIndex = 1
 			StopContinuousTween()
-			Click()
 			task.wait(0.1)
 			continue
 		end
 
-		-- corrige índice se a lista encolheu
 		if farmIndex > #targets then farmIndex = 1 end
 
 		local target = targets[farmIndex]
 
-		-- só ataca se o target for válido
-		local ok = false
-		pcall(function()
-			local tHRP = target.Character.HumanoidRootPart
-			local tHum = target.Character.Humanoid
-			if tHum.Health > 0 then ok = true end
-		end)
-
-		if ok then
-			-- move e olha pro target atual
-			StartContinuousTween(
-				function()
-					local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-					if t then return t.Position + Vector3.new(2, 0, 0) end
-				end,
-				function()
-					local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-					if t then return t.Position end
+		-- atualiza tween para ficar nas costas do target (Z -4 no espaço local)
+		StartContinuousTween(
+			function()
+				local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+				if t then
+					-- posição nas costas: -4 studs no eixo Z local do target
+					return (t.CFrame * CFrame.new(0, 0, -4)).Position
 				end
-			)
-
-			Click()
-			totalClicks = totalClicks + 1
-
-			-- a cada 5 clicks totais, pausa 3s
-			if totalClicks % 5 == 0 then
-				task.wait(3)
-			else
-				task.wait(0.05)
+			end,
+			function()
+				local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+				if t then return t.Position end
 			end
-		end
+		)
 
-		-- avança pro próximo player SEMPRE (mesmo se o atual foi inválido)
+		-- fica nesse target por 0.3s antes de alternar
+		task.wait(0.3)
+
+		-- avança pro próximo player
 		farmIndex = (farmIndex % #targets) + 1
 	end
 
