@@ -561,51 +561,18 @@ local function CreateBubble()
 		TextTransparency = 0,
 	}):Play()
 
-	-- arrastar + clicar pra reabrir
-	local bubbleDragging = false
-	local bubbleDragStart, bubbleStartPos
-	local bubbleMoved = false
-
-	Bubble.InputBegan:Connect(function(i)
-		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-			bubbleDragging = true
-			bubbleMoved = false
-			bubbleDragStart = i.Position
-			bubbleStartPos = Bubble.Position
-		end
-	end)
-
-	Bubble.InputChanged:Connect(function(i)
-		if bubbleDragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-			local delta = i.Position - bubbleDragStart
-			if delta.Magnitude > 6 then
-				bubbleMoved = true
-			end
-			Bubble.Position = UDim2.new(
-				bubbleStartPos.X.Scale, bubbleStartPos.X.Offset + delta.X,
-				bubbleStartPos.Y.Scale, bubbleStartPos.Y.Offset + delta.Y
-			)
-		end
-	end)
-
-	Bubble.InputEnded:Connect(function(i)
-		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-			bubbleDragging = false
-			-- só reabre se não arrastou
-			if not bubbleMoved then
-				local t = TweenService:Create(Bubble, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-					BackgroundTransparency = 1,
-					TextTransparency = 1,
-				})
-				t:Play()
-				t.Completed:Connect(function()
-					if Bubble then Bubble:Destroy(); Bubble = nil end
-					Mini = false
-					ShowHub()
-				end)
-			end
-			bubbleMoved = false
-		end
+	-- clicar pra reabrir
+	Bubble.MouseButton1Click:Connect(function()
+		local t = TweenService:Create(Bubble, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			BackgroundTransparency = 1,
+			TextTransparency = 1,
+		})
+		t:Play()
+		t.Completed:Connect(function()
+			if Bubble then Bubble:Destroy(); Bubble = nil end
+			Mini = false
+			ShowHub()
+		end)
 	end)
 end
 
