@@ -49,6 +49,12 @@ local activeTween = nil
 local espObjects  = {}
 local clickTpConn = nil
 
+-- Safe Players: set de nomes que o farm vai ignorar
+local safePlayers  = {}  -- { [name] = true }
+
+-- Target Farm: se definido, farm foca só nesse player
+local targetFarmPlayer = nil  -- string (nome) ou nil
+
 ----------------------------------------------------------------
 -- UTILITY
 ----------------------------------------------------------------
@@ -189,47 +195,28 @@ end)
 ----------------------------------------------------------------
 
 RunService.Heartbeat:Connect(function()
-
 	if not auraActive then return end
-
 	local hrp = GetHRP()
 	if not hrp then return end
 
 	for _, plr in pairs(Players:GetPlayers()) do
-
 		if plr == Player then continue end
-
 		pcall(function()
-
 			local char = plr.Character
 			if not char then return end
-
 			local tHRP = char:FindFirstChild("HumanoidRootPart")
 			if not tHRP then return end
-
 			local dist = (hrp.Position - tHRP.Position).Magnitude
 			if dist > _G.N3onHub.SavedStates.auraSize then return end
-
 			local myChar = Player.Character
 			if not myChar then return end
-
 			local tool = myChar:FindFirstChildOfClass("Tool")
 			if not tool then return end
-
-			pcall(function()
-				tool:Activate()
-			end)
-
+			pcall(function() tool:Activate() end)
 			task.wait(0.02)
-
-			pcall(function()
-				tool:Deactivate()
-			end)
-
+			pcall(function() tool:Deactivate() end)
 		end)
-
 	end
-
 end)
 
 ----------------------------------------------------------------
@@ -430,7 +417,7 @@ local function HasDangerousTool(plr)
 end
 
 ----------------------------------------------------------------
--- TARGET — retorna TODOS os players válidos no range
+-- TARGET — modos: target farm, normal (com safe players)
 ----------------------------------------------------------------
 
 local function GetAllInRange()
@@ -438,10 +425,24 @@ local function GetAllInRange()
 	if not hrp then return {} end
 	local range = _G.N3onHub.SavedStates.farmRange
 
-	local list = {}
+	-- MODO TARGET FARM: foca só num player, ignora tudo
+	if targetFarmPlayer then
+		local tPlr = Players:FindFirstChild(targetFarmPlayer)
+		if tPlr and tPlr ~= Player and tPlr.Character then
+			local tHRP = tPlr.Character:FindFirstChild("HumanoidRootPart")
+			local tHum = tPlr.Character:FindFirstChild("Humanoid")
+			if tHRP and tHum and tHum.Health > 0 then
+				return {tPlr}
+			end
+		end
+		return {}
+	end
 
+	-- MODO NORMAL: respeita safe players, dangerous tools e lobby
+	local list = {}
 	for _, plr in pairs(Players:GetPlayers()) do
 		if plr == Player then continue end
+		if safePlayers[plr.Name] then continue end  -- pula safe players
 		pcall(function()
 			local tHRP = plr.Character.HumanoidRootPart
 			local tHum = plr.Character.Humanoid
@@ -525,10 +526,7 @@ local function StopContinuousTween()
 end
 
 ----------------------------------------------------------------
--- Ataca um único target:
---   • 2 studs de distância no eixo X
---   • CFrame.lookAt olhando pro target
---   • pausa 0.5s a cada 10 slaps
+-- AttackTarget — 2 studs X, lookAt, pausa 3s a cada 5 slaps
 ----------------------------------------------------------------
 
 local CLICKS_PER_TARGET = 8
@@ -560,8 +558,8 @@ local function AttackTarget(target)
 		Click()
 		clicks = clicks + 1
 
-		if clicks % 10 == 0 then
-			task.wait(0.5)
+		if clicks % 5 == 0 then
+			task.wait(3)
 		else
 			task.wait(0.05)
 		end
@@ -569,7 +567,7 @@ local function AttackTarget(target)
 end
 
 ----------------------------------------------------------------
--- AUTO FARM LOOP — cicla por todos os targets no range
+-- AUTO FARM LOOP
 ----------------------------------------------------------------
 
 local function AutoFarmLoop()
@@ -581,15 +579,11 @@ local function AutoFarmLoop()
 		if not onPause and tick() - farmTimer >= 5 then
 			onPause = true
 			StopContinuousTween()
-
 			local hrpPause = GetHRP()
 			if hrpPause then hrpPause.Anchored = true end
-
 			task.wait(1.5)
-
 			local hrpResume = GetHRP()
 			if hrpResume then hrpResume.Anchored = false end
-
 			onPause   = false
 			farmTimer = tick()
 			continue
@@ -643,6 +637,234 @@ local function AutoFarmLoop()
 end
 
 ----------------------------------------------------------------
+-- HELPER: cria um dropdown de players no ScrollContent
+--
+--   label        = texto do botão principal
+--   color        = Color3 do header
+--   onSelect(name, isChecked)  → callback quando um item é toggled
+--   getChecked(name)           → retorna bool do estado atual
+--   refreshSignal              = se true, o dropdown se atualiza ao abrir
+----------------------------------------------------------------
+
+local function CreatePlayerDropdown(parent, label, color, getChecked, onSelect)
+	-- container que vai crescer/encolher
+	local container = Instance.new("Frame", parent)
+	container.Size = UDim2.new(1, 0, 0, 36)
+	container.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	container.BorderSizePixel = 0
+	Instance.new("UICorner", container)
+
+	-- header / botão principal
+	local header = Instance.new("TextButton", container)
+	header.Size = UDim2.new(1, 0, 0, 36)
+	header.BackgroundColor3 = color
+	header.Font = Enum.Font.GothamBold
+	header.TextSize = 13
+	header.TextColor3 = Color3.new(1, 1, 1)
+	header.Text = "▼  " .. label
+	header.TextXAlignment = Enum.TextXAlignment.Left
+	header.AutoButtonColor = false
+	local hc = Instance.new("UICorner", header)
+	hc.CornerRadius = UDim.new(0, 6)
+	local hp = Instance.new("UIPadding", header)
+	hp.PaddingLeft = UDim.new(0, 10)
+
+	-- scroll interno para os itens
+	local itemList = Instance.new("Frame", container)
+	itemList.Name = "ItemList"
+	itemList.Size = UDim2.new(1, 0, 0, 0)
+	itemList.Position = UDim2.new(0, 0, 0, 36)
+	itemList.BackgroundTransparency = 1
+	itemList.ClipsDescendants = true
+
+	local listLayout = Instance.new("UIListLayout", itemList)
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	listLayout.Padding = UDim.new(0, 2)
+
+	local isOpen = false
+
+	local function RebuildList()
+		-- limpa itens antigos
+		for _, ch in ipairs(itemList:GetChildren()) do
+			if ch:IsA("GuiObject") then ch:Destroy() end
+		end
+
+		local playerList = Players:GetPlayers()
+		table.sort(playerList, function(a, b) return a.Name < b.Name end)
+
+		for _, plr in ipairs(playerList) do
+			if plr == Player then continue end
+
+			local row = Instance.new("TextButton", itemList)
+			row.Size = UDim2.new(1, -4, 0, 30)
+			row.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+			row.Font = Enum.Font.Gotham
+			row.TextSize = 13
+			row.TextColor3 = Color3.new(1, 1, 1)
+			row.TextXAlignment = Enum.TextXAlignment.Left
+			row.AutoButtonColor = false
+			Instance.new("UICorner", row)
+			local rp = Instance.new("UIPadding", row)
+			rp.PaddingLeft = UDim.new(0, 10)
+
+			local checked = getChecked(plr.Name)
+			row.Text = (checked and "☑  " or "☐  ") .. plr.Name
+			row.BackgroundColor3 = checked
+				and Color3.fromRGB(50, 90, 50)
+				or  Color3.fromRGB(40, 40, 40)
+
+			row.MouseButton1Click:Connect(function()
+				onSelect(plr.Name, not getChecked(plr.Name))
+				-- atualiza só essa linha
+				local nowChecked = getChecked(plr.Name)
+				row.Text = (nowChecked and "☑  " or "☐  ") .. plr.Name
+				row.BackgroundColor3 = nowChecked
+					and Color3.fromRGB(50, 90, 50)
+					or  Color3.fromRGB(40, 40, 40)
+			end)
+		end
+
+		-- ajusta altura do itemList
+		local count = #itemList:GetChildren() - 1  -- desconta UIListLayout
+		local h = math.max(count * 32, 0)
+		itemList.Size = UDim2.new(1, 0, 0, h)
+		container.Size = UDim2.new(1, 0, 0, 36 + (isOpen and h or 0))
+	end
+
+	header.MouseButton1Click:Connect(function()
+		isOpen = not isOpen
+		if isOpen then
+			RebuildList()  -- atualiza lista ao abrir
+			header.Text = "▲  " .. label
+		else
+			header.Text = "▼  " .. label
+			itemList.Size = UDim2.new(1, 0, 0, 0)
+			container.Size = UDim2.new(1, 0, 0, 36)
+		end
+	end)
+
+	return container
+end
+
+----------------------------------------------------------------
+-- HELPER: dropdown de seleção única (Target Farm)
+-- Seleciona um player por vez; clica de novo para desselecionar
+----------------------------------------------------------------
+
+local function CreateSingleSelectDropdown(parent, label, color, getSelected, onSelect)
+	local container = Instance.new("Frame", parent)
+	container.Size = UDim2.new(1, 0, 0, 36)
+	container.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	container.BorderSizePixel = 0
+	Instance.new("UICorner", container)
+
+	local header = Instance.new("TextButton", container)
+	header.Size = UDim2.new(1, 0, 0, 36)
+	header.BackgroundColor3 = color
+	header.Font = Enum.Font.GothamBold
+	header.TextSize = 13
+	header.TextColor3 = Color3.new(1, 1, 1)
+	header.AutoButtonColor = false
+	Instance.new("UICorner", header)
+	local hp = Instance.new("UIPadding", header)
+	hp.PaddingLeft = UDim.new(0, 10)
+
+	local function UpdateHeaderText()
+		local sel = getSelected()
+		header.Text = "▼  " .. label .. (sel and (":  " .. sel) or "")
+	end
+	UpdateHeaderText()
+
+	local itemList = Instance.new("Frame", container)
+	itemList.Name = "ItemList"
+	itemList.Size = UDim2.new(1, 0, 0, 0)
+	itemList.Position = UDim2.new(0, 0, 0, 36)
+	itemList.BackgroundTransparency = 1
+	itemList.ClipsDescendants = true
+	Instance.new("UIListLayout", itemList).Padding = UDim.new(0, 2)
+
+	local isOpen = false
+
+	local function RebuildList()
+		for _, ch in ipairs(itemList:GetChildren()) do
+			if ch:IsA("GuiObject") then ch:Destroy() end
+		end
+
+		-- opção "Nenhum" para deselecionar
+		local noneRow = Instance.new("TextButton", itemList)
+		noneRow.Size = UDim2.new(1, -4, 0, 30)
+		noneRow.BackgroundColor3 = getSelected() == nil
+			and Color3.fromRGB(80, 40, 40)
+			or  Color3.fromRGB(40, 40, 40)
+		noneRow.Font = Enum.Font.GothamBold
+		noneRow.TextSize = 13
+		noneRow.TextColor3 = Color3.fromRGB(255, 120, 120)
+		noneRow.Text = "✕  Nenhum (desativar)"
+		noneRow.TextXAlignment = Enum.TextXAlignment.Left
+		noneRow.AutoButtonColor = false
+		Instance.new("UICorner", noneRow)
+		local np = Instance.new("UIPadding", noneRow)
+		np.PaddingLeft = UDim.new(0, 10)
+		noneRow.MouseButton1Click:Connect(function()
+			onSelect(nil)
+			UpdateHeaderText()
+			RebuildList()
+		end)
+
+		local playerList = Players:GetPlayers()
+		table.sort(playerList, function(a, b) return a.Name < b.Name end)
+
+		for _, plr in ipairs(playerList) do
+			if plr == Player then continue end
+			local row = Instance.new("TextButton", itemList)
+			row.Size = UDim2.new(1, -4, 0, 30)
+			local isSel = getSelected() == plr.Name
+			row.BackgroundColor3 = isSel
+				and Color3.fromRGB(50, 80, 110)
+				or  Color3.fromRGB(40, 40, 40)
+			row.Font = Enum.Font.Gotham
+			row.TextSize = 13
+			row.TextColor3 = Color3.new(1, 1, 1)
+			row.TextXAlignment = Enum.TextXAlignment.Left
+			row.AutoButtonColor = false
+			Instance.new("UICorner", row)
+			local rp = Instance.new("UIPadding", row)
+			rp.PaddingLeft = UDim.new(0, 10)
+			row.Text = (isSel and "◉  " or "○  ") .. plr.Name
+			row.MouseButton1Click:Connect(function()
+				-- toggle: clicou no mesmo = deseleciona
+				if getSelected() == plr.Name then
+					onSelect(nil)
+				else
+					onSelect(plr.Name)
+				end
+				UpdateHeaderText()
+				RebuildList()
+			end)
+		end
+
+		local count = #itemList:GetChildren() - 1
+		local h = math.max(count * 32, 0)
+		itemList.Size = UDim2.new(1, 0, 0, h)
+		container.Size = UDim2.new(1, 0, 0, 36 + (isOpen and h or 0))
+	end
+
+	header.MouseButton1Click:Connect(function()
+		isOpen = not isOpen
+		if isOpen then
+			RebuildList()
+			header.Text = "▲  " .. label .. (getSelected() and (":  " .. getSelected()) or "")
+		else
+			UpdateHeaderText()
+			itemList.Size = UDim2.new(1, 0, 0, 0)
+			container.Size = UDim2.new(1, 0, 0, 36)
+		end
+	end)
+
+	return container
+end
+
+----------------------------------------------------------------
 -- TAB: FARM
 ----------------------------------------------------------------
 
@@ -682,6 +904,72 @@ local function LoadFarmTab()
 	_G.N3onHub.Slider("Tween Speed", 5, 100, _G.N3onHub.SavedStates.farmSpeed, function(v)
 		_G.N3onHub.SavedStates.farmSpeed = v
 	end)
+
+	-- SAFE PLAYERS
+	local lSafe = Instance.new("TextLabel", SC)
+	lSafe.Size = UDim2.new(1, 0, 0, 28)
+	lSafe.BackgroundTransparency = 1
+	lSafe.Text = "🛡️ Safe Players"
+	lSafe.Font = Enum.Font.GothamBold
+	lSafe.TextSize = 15
+	lSafe.TextColor3 = Color3.fromRGB(100, 220, 255)
+	lSafe.TextXAlignment = Enum.TextXAlignment.Left
+
+	local safeDesc = Instance.new("TextLabel", SC)
+	safeDesc.Size = UDim2.new(1, 0, 0, 22)
+	safeDesc.BackgroundTransparency = 1
+	safeDesc.Text = "Players marcados NÃO serão atacados pelo farm."
+	safeDesc.Font = Enum.Font.Gotham
+	safeDesc.TextSize = 11
+	safeDesc.TextColor3 = Color3.fromRGB(160, 160, 160)
+	safeDesc.TextXAlignment = Enum.TextXAlignment.Left
+	safeDesc.TextWrapped = true
+
+	CreatePlayerDropdown(
+		SC,
+		"Safe Players",
+		Color3.fromRGB(30, 90, 130),
+		function(name) return safePlayers[name] == true end,
+		function(name, checked)
+			safePlayers[name] = checked or nil
+		end
+	)
+
+	-- TARGET FARM
+	local lTarget = Instance.new("TextLabel", SC)
+	lTarget.Size = UDim2.new(1, 0, 0, 28)
+	lTarget.BackgroundTransparency = 1
+	lTarget.Text = "🎯 Target Farm"
+	lTarget.Font = Enum.Font.GothamBold
+	lTarget.TextSize = 15
+	lTarget.TextColor3 = Color3.fromRGB(255, 140, 50)
+	lTarget.TextXAlignment = Enum.TextXAlignment.Left
+
+	local targetDesc = Instance.new("TextLabel", SC)
+	targetDesc.Size = UDim2.new(1, 0, 0, 22)
+	targetDesc.BackgroundTransparency = 1
+	targetDesc.Text = "Foca apenas neste player, ignora dangerous tools e safe players."
+	targetDesc.Font = Enum.Font.Gotham
+	targetDesc.TextSize = 11
+	targetDesc.TextColor3 = Color3.fromRGB(160, 160, 160)
+	targetDesc.TextXAlignment = Enum.TextXAlignment.Left
+	targetDesc.TextWrapped = true
+
+	CreateSingleSelectDropdown(
+		SC,
+		"Target Farm",
+		Color3.fromRGB(110, 55, 20),
+		function() return targetFarmPlayer end,
+		function(name)
+			targetFarmPlayer = name
+		end
+	)
+
+	-- separador
+	local sep = Instance.new("Frame", SC)
+	sep.Size = UDim2.new(1, 0, 0, 1)
+	sep.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	sep.BorderSizePixel = 0
 
 	-- HITBOX via loadstring
 	local lHitbox = Instance.new("TextLabel", SC)
