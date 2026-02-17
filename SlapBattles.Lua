@@ -588,7 +588,7 @@ local function AutoFarmLoop()
 					task.wait(0.2)
 				else
 					StopContinuousTween()
-					task.wait(3)
+					task.wait(1)
 					farmTimer = tick()
 				end
 			else
