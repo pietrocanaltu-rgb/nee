@@ -128,7 +128,7 @@ Content.ClipsDescendants = false
 
 local ScrollContent = Instance.new("ScrollingFrame", Content)
 ScrollContent.Size = UDim2.new(1, 0, 1, 0)
-@@ -125,8 +85,10 @@ ScrollContent.ScrollBarThickness = 6
+@@ -125,8 +85,10 @@
 ScrollContent.CanvasSize = UDim2.new(0, 0, 0, 0)
 
 local function Clear()
