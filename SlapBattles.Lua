@@ -587,7 +587,13 @@ local function AttackTarget(target)
 
 		Click()
 		clicks = clicks + 1
-		task.wait(0.05)
+
+		-- a cada 10 slaps, pausa 0.5s antes de continuar
+		if clicks % 10 == 0 then
+			task.wait(0.5)
+		else
+			task.wait(0.05)
+		end
 	end
 end
 
