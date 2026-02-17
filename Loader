@@ -16,5 +16,5 @@ elseif game.PlaceId == 537413528 then
     
 elseif game.PlaceId == 6403373529 then
     -- Slap Battles
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/PrisonLife.Lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/SlapBattles.Lua"))()
 end
