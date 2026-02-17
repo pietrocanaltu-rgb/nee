@@ -660,37 +660,71 @@ end
 
 ----------------------------------------------------------------
 -- ULTRA FARM LOOP
--- Fires GeneralHit directly on every player's hitbox every frame.
--- Does NOT use tween/movement — pure server-side hit spam.
--- USE AT YOUR OWN RISK: may cause kicks or bans.
+-- Igual ao script do mysxtic: teleporta em cima do player e
+-- dispara GeneralHit:FireServer a cada 0.6s — sem lag.
+-- ⚠️ USE POR SUA CONTA E RISCO!
 ----------------------------------------------------------------
 
+local ULTRA_HIT_DELAY = 0.6
+local ultraIndex      = 1
+
 local function UltraFarmLoop()
+	ultraIndex = 1
+
 	while ultraFarmActive do
+		local hrp = GetHRP()
+		local hum = GetHum()
+		if not hrp or not hum or hum.Health <= 0 then
+			task.wait(0.5)
+			continue
+		end
+
+		-- monta lista de targets válidos
+		local targets = {}
 		for _, plr in pairs(Players:GetPlayers()) do
 			if plr == Player then continue end
-			if not ultraFarmActive then break end
 			pcall(function()
 				local char = plr.Character
 				if not char then return end
+				local tHRP = char:FindFirstChild("HumanoidRootPart")
 				local tHum = char:FindFirstChild("Humanoid")
-				if not tHum or tHum.Health <= 0 then return end
-				if IsInsideLobby(char.HumanoidRootPart.Position) then return end
+				if not tHRP or not tHum or tHum.Health <= 0 then return end
+				if IsInsideLobby(tHRP.Position) then return end
 				if not targetFarmPlayer and safePlayers[plr.Name] then return end
 				if targetFarmPlayer and plr.Name ~= targetFarmPlayer then return end
-
-				-- hitbox: Left Arm / LeftHand / LeftLowerArm
-				local hitbox = char:FindFirstChild("Left Arm")
-					or char:FindFirstChild("LeftHand")
-					or char:FindFirstChild("LeftLowerArm")
-					or char:FindFirstChild("HumanoidRootPart")
-
-				if hitbox then
-					game:GetService("ReplicatedStorage").GeneralHit:FireServer(hitbox)
-				end
+				table.insert(targets, plr)
 			end)
 		end
-		task.wait(0.01)
+
+		if #targets == 0 then
+			task.wait(0.1)
+			continue
+		end
+
+		if ultraIndex > #targets then ultraIndex = 1 end
+		local target = targets[ultraIndex]
+		ultraIndex = (ultraIndex % #targets) + 1
+
+		pcall(function()
+			local tHRP = target.Character.HumanoidRootPart
+
+			-- teleporta em cima do target (igual ao script original)
+			hrp.CFrame = tHRP.CFrame
+				* CFrame.new(0, 3, 0)
+				* CFrame.Angles(math.rad(90), math.rad(180), 0)
+
+			-- hitbox: Left Arm > LeftHand > LeftLowerArm > HRP
+			local hitbox = target.Character:FindFirstChild("Left Arm")
+				or target.Character:FindFirstChild("LeftHand")
+				or target.Character:FindFirstChild("LeftLowerArm")
+				or target.Character:FindFirstChild("HumanoidRootPart")
+
+			if hitbox then
+				game:GetService("ReplicatedStorage").GeneralHit:FireServer(hitbox)
+			end
+		end)
+
+		task.wait(ULTRA_HIT_DELAY)
 	end
 end
 
@@ -1032,7 +1066,7 @@ local function LoadFarmTab()
 	local lUltra = Instance.new("TextLabel", SC)
 	lUltra.Size = UDim2.new(1, 0, 0, 28)
 	lUltra.BackgroundTransparency = 1
-	lUltra.Text = "⚡ ULTRA FARM"
+	lUltra.Text = "⚡ ULTRA FARM (precisa de 666 slaps)"
 	lUltra.Font = Enum.Font.GothamBold
 	lUltra.TextSize = 15
 	lUltra.TextColor3 = Color3.fromRGB(255, 60, 60)
@@ -1041,14 +1075,14 @@ local function LoadFarmTab()
 	local ultraDesc = Instance.new("TextLabel", SC)
 	ultraDesc.Size = UDim2.new(1, 0, 0, 34)
 	ultraDesc.BackgroundTransparency = 1
-	ultraDesc.Text = "⚠️ ULTRA FARM (hits everyone extremely fast) — USE AT YOUR OWN RISK!"
+	ultraDesc.Text = "⚠️ ULTRA FARM — bate em todos extremamente rápido. Precisa de 666 slaps (invisível). USE POR SUA CONTA E RISCO!"
 	ultraDesc.Font = Enum.Font.Gotham
 	ultraDesc.TextSize = 11
 	ultraDesc.TextColor3 = Color3.fromRGB(255, 120, 60)
 	ultraDesc.TextXAlignment = Enum.TextXAlignment.Left
 	ultraDesc.TextWrapped = true
 
-	_G.N3onHub.Checkbox("⚡ Ultra Farm", _G.N3onHub.SavedStates.ultraFarm or false, function(v)
+	_G.N3onHub.Checkbox("⚡ Ultra Farm (precisa de 666 slaps)", _G.N3onHub.SavedStates.ultraFarm or false, function(v)
 		_G.N3onHub.SavedStates.ultraFarm = v
 		ultraFarmActive = v
 		if v then
