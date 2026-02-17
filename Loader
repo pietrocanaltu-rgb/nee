@@ -14,7 +14,7 @@ elseif game.PlaceId == 537413528 then
     -- Build a Boat
     loadstring(game:HttpGet("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_buildaboat.lua"))()
     
-elseif game.PlaceId == 155615604 then
-    -- Prison Life
+elseif game.PlaceId == 6403373529 then
+    -- Slap Battles
     loadstring(game:HttpGet("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/PrisonLife.Lua"))()
 end
