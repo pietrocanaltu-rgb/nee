@@ -45,6 +45,7 @@ local antiKnockActive   = false
 local flingActive       = false
 local autoRespawnActive = false
 local clickTpActive     = false
+local ultraFarmActive   = false
 
 local activeTween = nil
 local espObjects  = {}
@@ -562,7 +563,7 @@ local function AutoFarmLoop()
 			StopContinuousTween()
 			local hrpPause = GetHRP()
 			if hrpPause then hrpPause.Anchored = true end
-			task.wait(0.75)
+			task.wait(1.5)
 			local hrpResume = GetHRP()
 			if hrpResume then hrpResume.Anchored = false end
 			onPause   = false
@@ -588,7 +589,7 @@ local function AutoFarmLoop()
 					task.wait(0.2)
 				else
 					StopContinuousTween()
-					task.wait(1)
+					task.wait(3)
 					farmTimer = tick()
 				end
 			else
@@ -655,6 +656,42 @@ local function AutoFarmLoop()
 	end
 
 	StopContinuousTween()
+end
+
+----------------------------------------------------------------
+-- ULTRA FARM LOOP
+-- Fires GeneralHit directly on every player's hitbox every frame.
+-- Does NOT use tween/movement — pure server-side hit spam.
+-- USE AT YOUR OWN RISK: may cause kicks or bans.
+----------------------------------------------------------------
+
+local function UltraFarmLoop()
+	while ultraFarmActive do
+		for _, plr in pairs(Players:GetPlayers()) do
+			if plr == Player then continue end
+			if not ultraFarmActive then break end
+			pcall(function()
+				local char = plr.Character
+				if not char then return end
+				local tHum = char:FindFirstChild("Humanoid")
+				if not tHum or tHum.Health <= 0 then return end
+				if IsInsideLobby(char.HumanoidRootPart.Position) then return end
+				if not targetFarmPlayer and safePlayers[plr.Name] then return end
+				if targetFarmPlayer and plr.Name ~= targetFarmPlayer then return end
+
+				-- hitbox: Left Arm / LeftHand / LeftLowerArm
+				local hitbox = char:FindFirstChild("Left Arm")
+					or char:FindFirstChild("LeftHand")
+					or char:FindFirstChild("LeftLowerArm")
+					or char:FindFirstChild("HumanoidRootPart")
+
+				if hitbox then
+					game:GetService("ReplicatedStorage").GeneralHit:FireServer(hitbox)
+				end
+			end)
+		end
+		task.wait(0.01)
+	end
 end
 
 ----------------------------------------------------------------
@@ -985,6 +1022,42 @@ local function LoadFarmTab()
 			targetFarmPlayer = name
 		end
 	)
+
+	-- ULTRA FARM
+	local sepUltra = Instance.new("Frame", SC)
+	sepUltra.Size = UDim2.new(1, 0, 0, 1)
+	sepUltra.BackgroundColor3 = Color3.fromRGB(80, 30, 30)
+	sepUltra.BorderSizePixel = 0
+
+	local lUltra = Instance.new("TextLabel", SC)
+	lUltra.Size = UDim2.new(1, 0, 0, 28)
+	lUltra.BackgroundTransparency = 1
+	lUltra.Text = "⚡ ULTRA FARM"
+	lUltra.Font = Enum.Font.GothamBold
+	lUltra.TextSize = 15
+	lUltra.TextColor3 = Color3.fromRGB(255, 60, 60)
+	lUltra.TextXAlignment = Enum.TextXAlignment.Left
+
+	local ultraDesc = Instance.new("TextLabel", SC)
+	ultraDesc.Size = UDim2.new(1, 0, 0, 34)
+	ultraDesc.BackgroundTransparency = 1
+	ultraDesc.Text = "⚠️ ULTRA FARM (hits everyone extremely fast) — USE AT YOUR OWN RISK!"
+	ultraDesc.Font = Enum.Font.Gotham
+	ultraDesc.TextSize = 11
+	ultraDesc.TextColor3 = Color3.fromRGB(255, 120, 60)
+	ultraDesc.TextXAlignment = Enum.TextXAlignment.Left
+	ultraDesc.TextWrapped = true
+
+	_G.N3onHub.Checkbox("⚡ Ultra Farm", _G.N3onHub.SavedStates.ultraFarm or false, function(v)
+		_G.N3onHub.SavedStates.ultraFarm = v
+		ultraFarmActive = v
+		if v then
+			-- desativa o farm normal se estiver ligado
+			autoFarmActive = false
+			_G.N3onHub.SavedStates.autoFarm = false
+			spawn(UltraFarmLoop)
+		end
+	end)
 
 	-- separador
 	local sep = Instance.new("Frame", SC)
