@@ -20,7 +20,7 @@ print("[Slap Battles Module] Loading...")
 
 _G.N3onHub.SavedStates.autoFarm       = false
 _G.N3onHub.SavedStates.farmSpeed      = 30
-_G.N3onHub.SavedStates.farmDistance   = 15
+_G.N3onHub.SavedStates.farmDistance   = 1
 _G.N3onHub.SavedStates.farmRange      = 100
 _G.N3onHub.SavedStates.auraEnabled    = false
 _G.N3onHub.SavedStates.auraSize       = 20
