@@ -308,28 +308,25 @@ end
 ----------------------------------------------------------------
 -- CLICK CORRIGIDO (SEM VIM / SEM BUG DE GUI)
 ----------------------------------------------------------------
-
-local ClickDelay = 0.08
-local HoldTime   = 0.02
-local lastClick  = 0
+-- CLICK — Heartbeat global, roda SEMPRE que autoFarmActive=true
+----------------------------------------------------------------
 
 local function Click()
-	if tick() - lastClick < ClickDelay then return end
-	lastClick = tick()
-
 	local char = Player.Character
 	if not char then return end
-
 	local hum = char:FindFirstChildOfClass("Humanoid")
 	if not hum or hum.Health <= 0 then return end
-
 	local tool = char:FindFirstChildOfClass("Tool")
 	if not tool then return end
-
 	pcall(function() tool:Activate() end)
-	if HoldTime > 0 then task.wait(HoldTime) end
 	pcall(function() tool:Deactivate() end)
 end
+
+-- Heartbeat permanente: clica todo frame enquanto farm ativo
+RunService.Heartbeat:Connect(function()
+	if not autoFarmActive then return end
+	Click()
+end)
 
 ----------------------------------------------------------------
 -- Verifica se uma posição está dentro do bounding box do Lobby
@@ -538,19 +535,6 @@ local function AutoFarmLoop()
 	local farmIndex   = 1
 	local totalClicks = 0
 
-	-- task de click: roda SEMPRE, independente de movimento
-	task.spawn(function()
-		while autoFarmActive do
-			Click()
-			totalClicks = totalClicks + 1
-			if totalClicks % 5 == 0 then
-				task.wait(3)
-			else
-				task.wait(0.05)
-			end
-		end
-	end)
-
 	-- loop de movimento: alterna target e atualiza tween
 	while autoFarmActive do
 
@@ -614,8 +598,8 @@ local function AutoFarmLoop()
 			function()
 				local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
 				if t then
-					-- posição nas costas: -4 studs no eixo Z local do target
-					return (t.CFrame * CFrame.new(0, 0, -4)).Position
+					-- posição nas costas: +3 studs no eixo Z local do target
+					return (t.CFrame * CFrame.new(0, 0, 3)).Position
 				end
 			end,
 			function()
