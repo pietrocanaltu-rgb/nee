@@ -1216,12 +1216,193 @@ local function LoadMiscTab()
 	UCS()
 end
 
+
+----------------------------------------------------------------
+-- MONSTRO — lógica serverside
+----------------------------------------------------------------
+
+local monsterActive    = false
+local monsterConns     = {}
+local monsterInstances = {}
+
+local function LimparMonstro()
+	for _, conn in ipairs(monsterConns) do
+		pcall(function() conn:Disconnect() end)
+	end
+	monsterConns = {}
+
+	for _, inst in ipairs(monsterInstances) do
+		pcall(function() inst:Destroy() end)
+	end
+	monsterInstances = {}
+
+	-- reseta tamanho do personagem
+	local char = Player.Character
+	if not char then return end
+	for _, part in ipairs(char:GetDescendants()) do
+		if part:IsA("SpecialMesh") then
+			pcall(function() part.Scale = Vector3.new(1, 1, 1) end)
+		end
+	end
+	pcall(function()
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum.BodyDepthScale.Value   = 1
+			hum.BodyHeightScale.Value  = 1
+			hum.BodyWidthScale.Value   = 1
+			hum.HeadScale.Value        = 1
+		end
+	end)
+end
+
+local MONSTER_COLORS = {
+	Color3.fromRGB(255, 0,   0  ),
+	Color3.fromRGB(255, 80,  0  ),
+	Color3.fromRGB(200, 0,   255),
+	Color3.fromRGB(0,   200, 255),
+	Color3.fromRGB(255, 255, 0  ),
+	Color3.fromRGB(0,   255, 80 ),
+}
+
+local function AtivarMonstro()
+	LimparMonstro()
+	local char = Player.Character
+	if not char then return end
+
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum then return end
+
+	-- 1. CORPO GIGANTE — escala pelo Humanoid
+	pcall(function()
+		hum.BodyDepthScale.Value   = 5
+		hum.BodyHeightScale.Value  = 5
+		hum.BodyWidthScale.Value   = 5
+		hum.HeadScale.Value        = 4
+	end)
+
+	-- 2. PARTÍCULAS / FOGO / FUMAÇA em cada part do corpo
+	for _, part in ipairs(char:GetDescendants()) do
+		if not part:IsA("BasePart") then continue end
+
+		-- Fogo
+		local fire = Instance.new("Fire", part)
+		fire.Size  = 8
+		fire.Heat  = 15
+		fire.Color = Color3.fromRGB(255, 50, 0)
+		fire.SecondaryColor = Color3.fromRGB(255, 200, 0)
+		table.insert(monsterInstances, fire)
+
+		-- Fumaça
+		local smoke = Instance.new("Smoke", part)
+		smoke.Size         = 3
+		smoke.Opacity      = 0.5
+		smoke.RiseVelocity = 8
+		smoke.Color        = Color3.fromRGB(80, 0, 80)
+		table.insert(monsterInstances, smoke)
+
+		-- Sparkles
+		local spark = Instance.new("Sparkles", part)
+		spark.SparkleColor = Color3.fromRGB(200, 0, 255)
+		table.insert(monsterInstances, spark)
+	end
+
+	-- 3. CORES PISCANDO LOUCAS — troca cor de todas as parts a cada 0.05s
+	local colorIndex = 1
+	local blinkConn = RunService.Heartbeat:Connect(function()
+		if not monsterActive then return end
+		local char2 = Player.Character
+		if not char2 then return end
+		colorIndex = (colorIndex % #MONSTER_COLORS) + 1
+		local col = MONSTER_COLORS[colorIndex]
+		for _, part in ipairs(char2:GetDescendants()) do
+			if part:IsA("BasePart") then
+				pcall(function() part.Color = col end)
+			end
+		end
+	end)
+	table.insert(monsterConns, blinkConn)
+
+	-- 4. BILLBOARD "MONSTRO" flutuando na cabeça
+	local head = char:FindFirstChild("Head")
+	if head then
+		local bb = Instance.new("BillboardGui", head)
+		bb.Size         = UDim2.fromOffset(200, 50)
+		bb.StudsOffset  = Vector3.new(0, 4, 0)
+		bb.AlwaysOnTop  = true
+		table.insert(monsterInstances, bb)
+
+		local lbl = Instance.new("TextLabel", bb)
+		lbl.Size                  = UDim2.new(1, 0, 1, 0)
+		lbl.BackgroundTransparency = 1
+		lbl.Font                  = Enum.Font.GothamBold
+		lbl.TextScaled            = true
+		lbl.TextStrokeTransparency = 0
+		lbl.TextStrokeColor3      = Color3.new(0, 0, 0)
+
+		-- texto do billboard pisca de cor também
+		local lblConn = RunService.Heartbeat:Connect(function()
+			if not monsterActive then return end
+			lbl.TextColor3 = MONSTER_COLORS[(colorIndex % #MONSTER_COLORS) + 1]
+			lbl.Text = "👹 MONSTRO 👹"
+		end)
+		table.insert(monsterConns, lblConn)
+	end
+end
+
+-- reativa ao respawnar
+Player.CharacterAdded:Connect(function()
+	if monsterActive then
+		task.wait(1)
+		AtivarMonstro()
+	end
+end)
+
+----------------------------------------------------------------
+-- TAB: MONSTRO
+----------------------------------------------------------------
+
+local function LoadMonsterTab()
+	_G.N3onHub.GUI.Clear()
+	local SC  = _G.N3onHub.GUI.ScrollContent
+	local UCS = _G.N3onHub.GUI.UpdateCanvasSize
+
+	local title = Instance.new("TextLabel", SC)
+	title.Size = UDim2.new(1, 0, 0, 40)
+	title.BackgroundTransparency = 1
+	title.Text = "👹 Monstro"
+	title.Font = Enum.Font.GothamBold
+	title.TextScaled = true
+	title.TextColor3 = Color3.fromRGB(255, 80, 80)
+
+	local desc = Instance.new("TextLabel", SC)
+	desc.Size = UDim2.new(1, 0, 0, 50)
+	desc.BackgroundTransparency = 1
+	desc.Text = "Vira um monstro gigante com fogo, fumaça, brilhos e cores piscando loucas. Visível pra todo mundo no servidor!"
+	desc.Font = Enum.Font.Gotham
+	desc.TextSize = 12
+	desc.TextColor3 = Color3.fromRGB(200, 200, 200)
+	desc.TextXAlignment = Enum.TextXAlignment.Left
+	desc.TextWrapped = true
+
+	_G.N3onHub.Checkbox("👹 Ativar Monstro", monsterActive, function(v)
+		monsterActive = v
+		if v then
+			AtivarMonstro()
+		else
+			LimparMonstro()
+		end
+	end)
+
+	UCS()
+end
+
 ----------------------------------------------------------------
 -- REGISTRAR TABS
 ----------------------------------------------------------------
 
-_G.N3onHub.Tab("Farm", "👏", 0, LoadFarmTab)
-_G.N3onHub.Tab("ESP",  "👁️", 0, LoadESPTab)
-_G.N3onHub.Tab("Misc", "⚙️", 0, LoadMiscTab)
+_G.N3onHub.Tab("Farm",    "👏", 0, LoadFarmTab)
+_G.N3onHub.Tab("ESP",     "👁️", 0, LoadESPTab)
+_G.N3onHub.Tab("Misc",    "⚙️", 0, LoadMiscTab)
+_G.N3onHub.Tab("Monstro", "👹", 0, LoadMonsterTab)
 
 print("[Slap Battles Module] Loaded!")
