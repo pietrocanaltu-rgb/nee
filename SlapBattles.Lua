@@ -302,16 +302,71 @@ local function Click()
 	VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
 end
 
+-- Verifica se uma posição está dentro do bounding box do Lobby
+local function IsInsideLobby(pos)
+	local lobby = workspace:FindFirstChild("Lobby")
+	if not lobby then return false end
+
+	-- Tenta usar PrimaryPart, senão procura qualquer BasePart como referência
+	local ref = lobby.PrimaryPart
+	if not ref then
+		for _, v in pairs(lobby:GetDescendants()) do
+			if v:IsA("BasePart") then ref = v break end
+		end
+	end
+	if not ref then return false end
+
+	-- Calcula o bounding box do modelo inteiro
+	local ok, bbCF, bbSize = pcall(function()
+		return lobby:GetBoundingBox()
+	end)
+	if not ok then return false end
+
+	-- Transforma a posição para o espaço local do bounding box
+	local localPos = bbCF:PointToObjectSpace(pos)
+	local half = bbSize / 2
+
+	return math.abs(localPos.X) <= half.X
+		and math.abs(localPos.Y) <= half.Y
+		and math.abs(localPos.Z) <= half.Z
+end
+
+-- Pega o ponto do Teleport1 dentro do Lobby
+local function GetLobbyTeleport()
+	local lobby = workspace:FindFirstChild("Lobby")
+	if not lobby then return nil end
+	local tp = lobby:FindFirstChild("Teleport1")
+	if not tp then return nil end
+	-- aceita BasePart ou Model
+	if tp:IsA("BasePart") then
+		return tp.Position + Vector3.new(0, 3, 0)
+	elseif tp:IsA("Model") then
+		if tp.PrimaryPart then
+			return tp.PrimaryPart.Position + Vector3.new(0, 3, 0)
+		else
+			for _, v in pairs(tp:GetDescendants()) do
+				if v:IsA("BasePart") then
+					return v.Position + Vector3.new(0, 3, 0)
+				end
+			end
+		end
+	end
+	return nil
+end
+
 local function GetClosestInRange()
 	local hrp = GetHRP()
 	if not hrp then return nil end
 	local closest, best = nil, math.huge
 	local range = _G.N3onHub.SavedStates.farmRange
+
 	for _, plr in pairs(Players:GetPlayers()) do
 		if plr == Player then continue end
 		pcall(function()
 			local tHRP = plr.Character.HumanoidRootPart
 			local tHum = plr.Character.Humanoid
+			-- ignora players dentro do Lobby
+			if IsInsideLobby(tHRP.Position) then return end
 			if tHum.Health > 0 then
 				local d = (hrp.Position - tHRP.Position).Magnitude
 				if d < best and d <= range then closest = plr; best = d end
@@ -321,35 +376,96 @@ local function GetClosestInRange()
 	return closest
 end
 
-local function TweenTo(target)
-	local hrp = GetHRP()
-	if not hrp or not target or not target.Character then return end
-	local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
-	if not tHRP then return end
-	local goalPos = tHRP.Position + Vector3.new(0, -_G.N3onHub.SavedStates.farmDistance, 0)
-	local dist = (hrp.Position - goalPos).Magnitude
-	local dur = math.max(dist / (_G.N3onHub.SavedStates.farmSpeed * 10), 0.05)
-	activeTween = TweenService:Create(hrp, TweenInfo.new(dur, Enum.EasingStyle.Linear), {CFrame = CFrame.new(goalPos)})
-	activeTween:Play()
-	activeTween.Completed:Wait()
+-- Tween contínuo: recria o tween sempre apontando pra posição atual do alvo
+local farmConn = nil
+
+local function StartContinuousTween(goalGetter)
+	if activeTween then activeTween:Cancel(); activeTween = nil end
+	if farmConn then farmConn:Disconnect(); farmConn = nil end
+
+	farmConn = RunService.Heartbeat:Connect(function()
+		if not autoFarmActive then
+			if activeTween then activeTween:Cancel(); activeTween = nil end
+			farmConn:Disconnect(); farmConn = nil
+			return
+		end
+
+		local hrp = GetHRP()
+		if not hrp then return end
+
+		local goalPos = goalGetter()
+		if not goalPos then return end
+
+		-- Só recria o tween se não tiver um rodando ou se o alvo mudou de posição
+		if not activeTween or activeTween.PlaybackState ~= Enum.PlaybackState.Playing then
+			local dist = (hrp.Position - goalPos).Magnitude
+			local dur = math.max(dist / (_G.N3onHub.SavedStates.farmSpeed * 10), 0.05)
+			activeTween = TweenService:Create(
+				hrp,
+				TweenInfo.new(dur, Enum.EasingStyle.Linear),
+				{CFrame = CFrame.new(goalPos)}
+			)
+			activeTween:Play()
+		end
+	end)
+end
+
+local function StopContinuousTween()
+	if farmConn then farmConn:Disconnect(); farmConn = nil end
+	if activeTween then activeTween:Cancel(); activeTween = nil end
 end
 
 local function AutoFarmLoop()
 	while autoFarmActive do
 		local hrp = GetHRP()
 		local hum = GetHum()
-		if not hrp or not hum or hum.Health <= 0 then task.wait(0.5) continue end
-		local target = GetClosestInRange()
-		if target then
-			TweenTo(target)
-			local t0 = tick()
-			while autoFarmActive and tick() - t0 < 0.8 do
-				Click(); task.wait(0.01)
-			end
-		else
-			Click(); task.wait(0.1)
+		if not hrp or not hum or hum.Health <= 0 then
+			StopContinuousTween()
+			task.wait(0.5)
+			continue
 		end
+
+		-- Verifica se EU estou no Lobby → vai pro Teleport1
+		if IsInsideLobby(hrp.Position) then
+			StopContinuousTween()
+			local tpPos = GetLobbyTeleport()
+			if tpPos then
+				StartContinuousTween(function() return tpPos end)
+			end
+			task.wait(0.2)
+			continue
+		end
+
+		-- Fora do lobby → persegue o player mais próximo
+		local target = GetClosestInRange()
+		if target and target.Character then
+			local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
+			if tHRP then
+				StartContinuousTween(function()
+					-- atualiza a posição alvo continuamente
+					local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+					if t then
+						return t.Position + Vector3.new(0, -_G.N3onHub.SavedStates.farmDistance, 0)
+					end
+					return nil
+				end)
+				-- clica enquanto persegue
+				local t0 = tick()
+				while autoFarmActive and tick() - t0 < 0.5 do
+					Click()
+					task.wait(0.05)
+				end
+				continue
+			end
+		end
+
+		-- Sem alvo → só clica
+		StopContinuousTween()
+		Click()
+		task.wait(0.1)
 	end
+
+	StopContinuousTween()
 end
 
 ----------------------------------------------------------------
@@ -382,8 +498,11 @@ local function LoadFarmTab()
 	_G.N3onHub.Checkbox("Auto Farm (Tween + Click)", _G.N3onHub.SavedStates.autoFarm, function(v)
 		_G.N3onHub.SavedStates.autoFarm = v
 		autoFarmActive = v
-		if v then spawn(AutoFarmLoop)
-		else if activeTween then activeTween:Cancel(); activeTween = nil end end
+		if v then
+			spawn(AutoFarmLoop)
+		else
+			if activeTween then activeTween:Cancel(); activeTween = nil end
+		end
 	end)
 
 	_G.N3onHub.Slider("Tween Speed", 5, 100, _G.N3onHub.SavedStates.farmSpeed, function(v)
@@ -398,7 +517,7 @@ local function LoadFarmTab()
 		_G.N3onHub.SavedStates.farmRange = v
 	end)
 
-	-- HITBOX (via loadstring)
+	-- HITBOX via loadstring
 	local lHitbox = Instance.new("TextLabel", SC)
 	lHitbox.Size = UDim2.new(1, 0, 0, 28)
 	lHitbox.BackgroundTransparency = 1
@@ -408,6 +527,7 @@ local function LoadFarmTab()
 	lHitbox.TextColor3 = Color3.fromRGB(255, 100, 100)
 	lHitbox.TextXAlignment = Enum.TextXAlignment.Left
 
+	local hitboxLoaded = false
 	local hitboxBtn = Instance.new("TextButton", SC)
 	hitboxBtn.Size = UDim2.new(1, 0, 0, 40)
 	hitboxBtn.Text = "🎯 Carregar Hitbox Expander"
@@ -415,16 +535,21 @@ local function LoadFarmTab()
 	hitboxBtn.TextSize = 14
 	hitboxBtn.BackgroundColor3 = Color3.fromRGB(120, 30, 30)
 	hitboxBtn.TextColor3 = Color3.new(1, 1, 1)
+	hitboxBtn.AutoButtonColor = false
 	Instance.new("UICorner", hitboxBtn)
 
 	hitboxBtn.MouseButton1Click:Connect(function()
+		if hitboxLoaded then return end
+		hitboxLoaded = true
 		hitboxBtn.Text = "⏳ Carregando..."
 		hitboxBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 30)
-		pcall(function()
-			loadstring(game:HttpGet(("https://gist.githubusercontent.com/stellar-4242/430ef3087d8d87eb306ca03e728ffbb8/raw/798429dd908b1f4471a1fa569ff62c5e5a93ec61/SLAP.LUA")))()
+		task.spawn(function()
+			pcall(function()
+				loadstring(game:HttpGet("https://gist.githubusercontent.com/stellar-4242/430ef3087d8d87eb306ca03e728ffbb8/raw/798429dd908b1f4471a1fa569ff62c5e5a93ec61/SLAP.LUA"))()
+			end)
+			hitboxBtn.Text = "✅ Hitbox Carregado!"
+			hitboxBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
 		end)
-		hitboxBtn.Text = "✅ Hitbox Carregado!"
-		hitboxBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
 	end)
 
 	-- KILL AURA
@@ -596,7 +721,6 @@ local function LoadMiscTab()
 	Instance.new("UICorner", tpBtn)
 	tpBtn.MouseButton1Click:Connect(TeleportToSafeZone)
 
-	-- TP para jogador mais próximo
 	local tpPlrBtn = Instance.new("TextButton", SC)
 	tpPlrBtn.Size = UDim2.new(1, 0, 0, 40)
 	tpPlrBtn.Text = "🎯 TP to Closest Player"
@@ -619,10 +743,11 @@ end
 
 ----------------------------------------------------------------
 -- REGISTRAR TABS
+-- O 3º argumento é ignorado pelo base (Y automático)
 ----------------------------------------------------------------
 
-_G.N3onHub.Tab("Farm", "👏", 160, LoadFarmTab)
-_G.N3onHub.Tab("ESP",  "👁️", 220, LoadESPTab)
-_G.N3onHub.Tab("Misc", "⚙️", 280, LoadMiscTab)
+_G.N3onHub.Tab("Farm", "👏", 0, LoadFarmTab)
+_G.N3onHub.Tab("ESP",  "👁️", 0, LoadESPTab)
+_G.N3onHub.Tab("Misc", "⚙️", 0, LoadMiscTab)
 
 print("[Slap Battles Module] Loaded!")
