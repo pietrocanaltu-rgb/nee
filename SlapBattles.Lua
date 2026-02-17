@@ -479,7 +479,6 @@ local function GetAllInRange()
 		end)
 	end
 
-	-- ordena do mais próximo ao mais longe
 	table.sort(list, function(a, b) return a.dist < b.dist end)
 
 	local result = {}
@@ -490,7 +489,7 @@ local function GetAllInRange()
 end
 
 ----------------------------------------------------------------
--- TWEEN
+-- TWEEN — move e OLHA para o target usando CFrame.lookAt
 ----------------------------------------------------------------
 
 local farmConn = nil
@@ -512,24 +511,33 @@ local function StartContinuousTween(goalGetter, lookAtGetter)
 		local goalPos = goalGetter()
 		if not goalPos then return end
 
-		if lookAtGetter then
-			local lookPos = lookAtGetter()
-			if lookPos then
-				local dir = (lookPos - hrp.Position) * Vector3.new(1, 0, 1)
-				if dir.Magnitude > 0.1 then
-					hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + dir)
-				end
-			end
-		end
-
 		if not activeTween or activeTween.PlaybackState ~= Enum.PlaybackState.Playing then
 			local dist = (hrp.Position - goalPos).Magnitude
 			local dur = math.max(dist / (_G.N3onHub.SavedStates.farmSpeed * 10), 0.05)
 
+			-- monta a CFrame já com rotação olhando pro target (flat no Y)
+			local goalCFrame
+			if lookAtGetter then
+				local lookPos = lookAtGetter()
+				if lookPos then
+					local flatLook = Vector3.new(lookPos.X, goalPos.Y, lookPos.Z)
+					-- evita lookAt com posições idênticas
+					if (flatLook - goalPos).Magnitude > 0.01 then
+						goalCFrame = CFrame.lookAt(goalPos, flatLook)
+					else
+						goalCFrame = CFrame.new(goalPos)
+					end
+				else
+					goalCFrame = CFrame.new(goalPos)
+				end
+			else
+				goalCFrame = CFrame.new(goalPos)
+			end
+
 			activeTween = TweenService:Create(
 				hrp,
 				TweenInfo.new(dur, Enum.EasingStyle.Linear),
-				{CFrame = CFrame.new(goalPos)}
+				{CFrame = goalCFrame}
 			)
 			activeTween:Play()
 		end
@@ -542,10 +550,12 @@ local function StopContinuousTween()
 end
 
 ----------------------------------------------------------------
--- Ataca um único target pelo tempo configurado (clicks no ciclo)
+-- Ataca um único target:
+--   • para 2 studs de distância no eixo X do target
+--   • usa CFrame.lookAt para ficar olhando direto pra ele
 ----------------------------------------------------------------
 
-local CLICKS_PER_TARGET = 8  -- quantos clicks faz antes de trocar de target
+local CLICKS_PER_TARGET = 8  -- clicks antes de trocar de target
 
 local function AttackTarget(target)
 	if not target or not target.Character then return end
@@ -558,10 +568,12 @@ local function AttackTarget(target)
 		function()
 			local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
 			if t then
-				return t.Position + Vector3.new(0, -_G.N3onHub.SavedStates.farmDistance, 0)
+				-- 2 studs de distância no eixo X (lado do target, acompanha em tempo real)
+				return t.Position + Vector3.new(2, 0, 0)
 			end
 		end,
 		function()
+			-- lookAt aponta para o centro do target
 			local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
 			if t then return t.Position end
 		end
@@ -569,7 +581,6 @@ local function AttackTarget(target)
 
 	local clicks = 0
 	while autoFarmActive and clicks < CLICKS_PER_TARGET do
-		-- verifica se o target ainda é válido
 		if not target.Character then break end
 		local h = target.Character:FindFirstChild("Humanoid")
 		if not h or h.Health <= 0 then break end
@@ -637,19 +648,16 @@ local function AutoFarmLoop()
 			continue
 		end
 
-		-- pega TODOS os targets no range
+		-- pega TODOS os targets válidos no range
 		local targets = GetAllInRange()
 
 		if #targets > 0 then
-			-- cicla por cada target da lista
 			for _, target in ipairs(targets) do
 				if not autoFarmActive then break end
-
-				-- re-checa se a pausa anti-kick já chegou
 				if tick() - farmTimer >= 5 then break end
 
 				AttackTarget(target)
-				task.wait(0.05) -- pequena pausa entre targets
+				task.wait(0.05) -- pausa entre targets
 			end
 		else
 			-- sem targets: fica clicando no lugar
