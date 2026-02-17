@@ -7,13 +7,13 @@ if not _G.N3onHub then
 	warn("[Slap Battles Module] Base hub not loaded! Please load the base first.")
 -- Aguarda o Base Hub carregar (até 10s)
 local tries = 0
-repeat task.wait(0.5); tries += 1 until (_G.N3onHub and _G.N3onHub._loaded) or tries >= 20
+repeat task.wait(1); tries += 1 until (_G.N3onHub and _G.N3onHub._loaded) or tries >= 20
 if not (_G.N3onHub and _G.N3onHub._loaded) then
     warn("[N3on·Slap] Base Hub nao carregado!"); return
 -- ╔══════════════════════════════════════╗
 --   WAIT HUB LOAD (robusto)
 -- ╚══════════════════════════════════════╝
-repeat task.wait(0.5); tries += 1 until _G.N3onHub or tries >= 20
+repeat task.wait(1); tries += 1 until _G.N3onHub or tries >= 20
 
 local function WaitHub()
 if not _G.N3onHub or not _G.N3onHub._loaded then
