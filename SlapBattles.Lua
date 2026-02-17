@@ -189,23 +189,55 @@ end)
 -- KILL AURA
 ----------------------------------------------------------------
 
+----------------------------------------------------------------
+-- AURA CLICK FIX (SEM VIM)
+----------------------------------------------------------------
+
 RunService.Heartbeat:Connect(function()
+
 	if not auraActive then return end
+
 	local hrp = GetHRP()
 	if not hrp then return end
-	for _, plr in pairs(Players:GetPlayers()) do
-		if plr == Player then continue end
-		pcall(function()
-			local tHRP = plr.Character.HumanoidRootPart
-			if (hrp.Position - tHRP.Position).Magnitude <= _G.N3onHub.SavedStates.auraSize then
-				VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-				task.wait(0.01)
-				VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-			end
-		end)
-	end
-end)
 
+	for _, plr in pairs(Players:GetPlayers()) do
+
+		if plr == Player then continue end
+
+		pcall(function()
+
+			local char = plr.Character
+			if not char then return end
+
+			local tHRP = char:FindFirstChild("HumanoidRootPart")
+			if not tHRP then return end
+
+			local dist = (hrp.Position - tHRP.Position).Magnitude
+			if dist > _G.N3onHub.SavedStates.auraSize then return end
+
+			-- pega sua tool equipada
+			local myChar = Player.Character
+			if not myChar then return end
+
+			local tool = myChar:FindFirstChildOfClass("Tool")
+			if not tool then return end
+
+			-- ativa ataque
+			pcall(function()
+				tool:Activate()
+			end)
+
+			task.wait(0.02)
+
+			pcall(function()
+				tool:Deactivate()
+			end)
+
+		end)
+
+	end
+
+end)
 ----------------------------------------------------------------
 -- ANTI KNOCKBACK
 ----------------------------------------------------------------
@@ -296,18 +328,49 @@ end
 -- AUTO CLICK + AUTO FARM
 ----------------------------------------------------------------
 
+local ClickDelay = 0.08
+local HoldTime   = 0.02
+
+local lastClick = 0
+
 local function Click()
-	VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-	task.wait(0.01)
-	VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+
+	if tick() - lastClick < ClickDelay then
+		return
+	end
+	lastClick = tick()
+
+	local char = Player.Character
+	if not char then return end
+
+	local hum = char:FindFirstChildOfClass("Humanoid")
+	if not hum or hum.Health <= 0 then return end
+
+	local tool = char:FindFirstChildOfClass("Tool")
+	if not tool then return end
+
+	pcall(function()
+		tool:Activate()
+	end)
+
+	if HoldTime > 0 then
+		task.wait(HoldTime)
+	end
+
+	pcall(function()
+		tool:Deactivate()
+	end)
+
 end
 
+----------------------------------------------------------------
 -- Verifica se uma posição está dentro do bounding box do Lobby
+----------------------------------------------------------------
+
 local function IsInsideLobby(pos)
 	local lobby = workspace:FindFirstChild("Lobby")
 	if not lobby then return false end
 
-	-- Tenta usar PrimaryPart, senão procura qualquer BasePart como referência
 	local ref = lobby.PrimaryPart
 	if not ref then
 		for _, v in pairs(lobby:GetDescendants()) do
@@ -316,13 +379,11 @@ local function IsInsideLobby(pos)
 	end
 	if not ref then return false end
 
-	-- Calcula o bounding box do modelo inteiro
 	local ok, bbCF, bbSize = pcall(function()
 		return lobby:GetBoundingBox()
 	end)
 	if not ok then return false end
 
-	-- Transforma a posição para o espaço local do bounding box
 	local localPos = bbCF:PointToObjectSpace(pos)
 	local half = bbSize / 2
 
@@ -331,13 +392,16 @@ local function IsInsideLobby(pos)
 		and math.abs(localPos.Z) <= half.Z
 end
 
--- Pega o ponto do Teleport1 dentro do Lobby
+----------------------------------------------------------------
+-- TELEPORT
+----------------------------------------------------------------
+
 local function GetLobbyTeleport()
 	local lobby = workspace:FindFirstChild("Lobby")
 	if not lobby then return nil end
 	local tp = lobby:FindFirstChild("Teleport1")
 	if not tp then return nil end
-	-- aceita BasePart ou Model
+
 	if tp:IsA("BasePart") then
 		return tp.Position + Vector3.new(0, 3, 0)
 	elseif tp:IsA("Model") then
@@ -354,7 +418,10 @@ local function GetLobbyTeleport()
 	return nil
 end
 
--- Tools perigosas — ignora quem tiver qualquer uma delas (case insensitive)
+----------------------------------------------------------------
+-- DANGEROUS TOOLS
+----------------------------------------------------------------
+
 local DANGEROUS_TOOLS = {"overkill", "error", "the flex"}
 
 local function HasDangerousTool(plr)
@@ -365,13 +432,13 @@ local function HasDangerousTool(plr)
 		end
 		return false
 	end
-	-- verifica no Character (tool equipada)
+
 	if plr.Character then
 		for _, obj in pairs(plr.Character:GetChildren()) do
 			if obj:IsA("Tool") and checkName(obj.Name) then return true end
 		end
 	end
-	-- verifica na Backpack
+
 	local bp = plr:FindFirstChild("Backpack")
 	if bp then
 		for _, obj in pairs(bp:GetChildren()) do
@@ -380,6 +447,10 @@ local function HasDangerousTool(plr)
 	end
 	return false
 end
+
+----------------------------------------------------------------
+-- TARGET
+----------------------------------------------------------------
 
 local function GetClosestInRange()
 	local hrp = GetHRP()
@@ -392,21 +463,24 @@ local function GetClosestInRange()
 		pcall(function()
 			local tHRP = plr.Character.HumanoidRootPart
 			local tHum = plr.Character.Humanoid
-			-- ignora players dentro do Lobby
 			if IsInsideLobby(tHRP.Position) then return end
-			-- ignora players com tools perigosas
 			if HasDangerousTool(plr) then return end
 			if tHum.Health > 0 then
 				local d = (hrp.Position - tHRP.Position).Magnitude
-				if d < best and d <= range then closest = plr; best = d end
+				if d < best and d <= range then
+					closest = plr
+					best = d
+				end
 			end
 		end)
 	end
 	return closest
 end
 
--- Tween contínuo: recria o tween sempre apontando pra posição atual do alvo
--- lookAtGetter: função opcional que retorna a posição pra olhar
+----------------------------------------------------------------
+-- TWEEN
+----------------------------------------------------------------
+
 local farmConn = nil
 
 local function StartContinuousTween(goalGetter, lookAtGetter)
@@ -426,21 +500,20 @@ local function StartContinuousTween(goalGetter, lookAtGetter)
 		local goalPos = goalGetter()
 		if not goalPos then return end
 
-		-- Olha pro alvo enquanto se move
 		if lookAtGetter then
 			local lookPos = lookAtGetter()
 			if lookPos then
-				local dir = (lookPos - hrp.Position) * Vector3.new(1, 0, 1) -- só no plano horizontal
+				local dir = (lookPos - hrp.Position) * Vector3.new(1, 0, 1)
 				if dir.Magnitude > 0.1 then
-					hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + dir) * CFrame.Angles(0, 0, 0)
+					hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + dir)
 				end
 			end
 		end
 
-		-- Só recria o tween se não tiver um rodando
 		if not activeTween or activeTween.PlaybackState ~= Enum.PlaybackState.Playing then
 			local dist = (hrp.Position - goalPos).Magnitude
 			local dur = math.max(dist / (_G.N3onHub.SavedStates.farmSpeed * 10), 0.05)
+
 			activeTween = TweenService:Create(
 				hrp,
 				TweenInfo.new(dur, Enum.EasingStyle.Linear),
@@ -456,23 +529,25 @@ local function StopContinuousTween()
 	if activeTween then activeTween:Cancel(); activeTween = nil end
 end
 
+----------------------------------------------------------------
+-- AUTO FARM LOOP
+----------------------------------------------------------------
+
 local function AutoFarmLoop()
-	local farmTimer  = tick()  -- conta os 3s ativos
-	local onPause    = false
+	local farmTimer = tick()
+	local onPause   = false
 
 	while autoFarmActive do
-		-- a cada 3s de farm, pausa por 3s (para tudo e ancora o HRP)
+
 		if not onPause and tick() - farmTimer >= 5 then
 			onPause = true
 			StopContinuousTween()
 
-			-- ancora o HRP pra ficar parado no lugar
 			local hrpPause = GetHRP()
 			if hrpPause then hrpPause.Anchored = true end
 
 			task.wait(1.5)
 
-			-- desancora antes de continuar
 			local hrpResume = GetHRP()
 			if hrpResume then hrpResume.Anchored = false end
 
@@ -483,26 +558,24 @@ local function AutoFarmLoop()
 
 		local hrp = GetHRP()
 		local hum = GetHum()
+
 		if not hrp or not hum or hum.Health <= 0 then
 			StopContinuousTween()
 			task.wait(0.5)
 			continue
 		end
 
-		-- Verifica se EU estou no Lobby → vai pro Teleport1
 		if IsInsideLobby(hrp.Position) then
 			local tpPos = GetLobbyTeleport()
 			if tpPos then
 				local distToTp = (hrp.Position - tpPos).Magnitude
 				if distToTp > 5 then
-					-- ainda longe do portal, vai até ele sem olhar pra ninguém
 					StartContinuousTween(function() return tpPos end, nil)
 					task.wait(0.2)
 				else
-					-- chegou no portal! para tudo, espera 3s SEM ancorar e continua
 					StopContinuousTween()
 					task.wait(3)
-					farmTimer = tick() -- reseta o timer pra não pausar logo depois
+					farmTimer = tick()
 				end
 			else
 				StopContinuousTween()
@@ -511,34 +584,34 @@ local function AutoFarmLoop()
 			continue
 		end
 
-		-- Fora do lobby → persegue o player mais próximo
 		local target = GetClosestInRange()
 		if target and target.Character then
 			local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
 			if tHRP then
-				-- passa o goalGetter E o lookAtGetter (posição do rosto/HRP do alvo)
+
 				StartContinuousTween(
 					function()
 						local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-						if t then return t.Position + Vector3.new(0, -_G.N3onHub.SavedStates.farmDistance, 0) end
-						return nil
+						if t then
+							return t.Position + Vector3.new(0, -_G.N3onHub.SavedStates.farmDistance, 0)
+						end
 					end,
 					function()
 						local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
 						if t then return t.Position end
-						return nil
 					end
 				)
+
 				local t0 = tick()
 				while autoFarmActive and tick() - t0 < 0.5 do
 					Click()
 					task.wait(0.05)
 				end
+
 				continue
 			end
 		end
 
-		-- Sem alvo → só clica
 		StopContinuousTween()
 		Click()
 		task.wait(0.1)
@@ -546,7 +619,6 @@ local function AutoFarmLoop()
 
 	StopContinuousTween()
 end
-
 ----------------------------------------------------------------
 -- TAB: FARM
 ----------------------------------------------------------------
