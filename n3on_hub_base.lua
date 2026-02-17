@@ -1,5 +1,6 @@
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 
 -- Evita carregar duas vezes
 if _G.N3onHub and _G.N3onHub._loaded then
