@@ -571,8 +571,9 @@ end
 ----------------------------------------------------------------
 
 local function AutoFarmLoop()
-	local farmTimer = tick()
-	local onPause   = false
+	local farmTimer  = tick()
+	local onPause    = false
+	local farmIndex  = 1  -- índice atual na lista de targets (alterna entre players)
 
 	while autoFarmActive do
 
@@ -620,13 +621,21 @@ local function AutoFarmLoop()
 		local targets = GetAllInRange()
 
 		if #targets > 0 then
-			for _, target in ipairs(targets) do
-				if not autoFarmActive then break end
-				if tick() - farmTimer >= 5 then break end
-				AttackTarget(target)
-				task.wait(0.05)
-			end
+			-- garante que o índice é válido para o tamanho atual da lista
+			if farmIndex > #targets then farmIndex = 1 end
+
+			local target = targets[farmIndex]
+
+			-- avança pro próximo player antes de atacar (alterna no próximo tick)
+			farmIndex = (farmIndex % #targets) + 1
+
+			if not autoFarmActive then break end
+			if tick() - farmTimer >= 5 then continue end
+
+			AttackTarget(target)
+			task.wait(0.05)
 		else
+			farmIndex = 1  -- reseta quando não há targets
 			StopContinuousTween()
 			Click()
 			task.wait(0.1)
