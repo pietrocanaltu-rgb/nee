@@ -322,11 +322,7 @@ local function Click()
 	pcall(function() tool:Deactivate() end)
 end
 
--- Heartbeat permanente: clica todo frame enquanto farm ativo
-RunService.Heartbeat:Connect(function()
-	if not autoFarmActive then return end
-	Click()
-end)
+-- Click é controlado pelo AutoFarmLoop (não roda no Heartbeat global)
 
 ----------------------------------------------------------------
 -- Verifica se uma posição está dentro do bounding box do Lobby
@@ -535,7 +531,7 @@ local function AutoFarmLoop()
 	local farmIndex   = 1
 	local totalClicks = 0
 
-	-- loop de movimento: alterna target e atualiza tween
+	-- loop principal: vai até o target, espera chegar, clica, troca
 	while autoFarmActive do
 
 		-- pausa anti-kick a cada 5s
@@ -590,17 +586,13 @@ local function AutoFarmLoop()
 		end
 
 		if farmIndex > #targets then farmIndex = 1 end
-
 		local target = targets[farmIndex]
 
-		-- atualiza tween para ficar nas costas do target (Z -4 no espaço local)
+		-- tween: vai pras costas do target (Z+3)
 		StartContinuousTween(
 			function()
 				local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-				if t then
-					-- posição nas costas: +3 studs no eixo Z local do target
-					return (t.CFrame * CFrame.new(0, 0, 3)).Position
-				end
+				if t then return (t.CFrame * CFrame.new(0, 0, 3)).Position end
 			end,
 			function()
 				local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
@@ -608,8 +600,30 @@ local function AutoFarmLoop()
 			end
 		)
 
-		-- fica nesse target por 0.3s antes de alternar
-		task.wait(0.3)
+		-- espera chegar perto (< 3 studs) ou timeout de 2s
+		local arriveTimer = tick()
+		while autoFarmActive and tick() - arriveTimer < 2 do
+			local h = GetHRP()
+			local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+			if h and t and (h.Position - t.Position).Magnitude < 5 then break end
+			task.wait(0.05)
+		end
+
+		-- chegou: espera 0.1~0.25s aleatório antes de clicar
+		task.wait(math.random(10, 25) / 100)
+
+		-- clica
+		Click()
+		totalClicks = totalClicks + 1
+
+		-- espera 0.1~0.25s antes de ir pro próximo
+		task.wait(math.random(10, 25) / 100)
+
+		-- a cada 5 clicks, pausa 3s
+		if totalClicks % 5 == 0 then
+			StopContinuousTween()
+			task.wait(3)
+		end
 
 		-- avança pro próximo player
 		farmIndex = (farmIndex % #targets) + 1
