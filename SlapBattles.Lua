@@ -421,7 +421,7 @@ local function LoadFarmTab()
 		hitboxBtn.Text = "⏳ Carregando..."
 		hitboxBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 30)
 		pcall(function()
-			loadstring(game:HttpGet("https://raw.githubusercontent.com/Vcsk/RobloxScripts/main/HitboxExpander.lua"))()
+			loadstring(game:HttpGet(("https://gist.githubusercontent.com/stellar-4242/430ef3087d8d87eb306ca03e728ffbb8/raw/798429dd908b1f4471a1fa569ff62c5e5a93ec61/SLAP.LUA")))()
 		end)
 		hitboxBtn.Text = "✅ Hitbox Carregado!"
 		hitboxBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
