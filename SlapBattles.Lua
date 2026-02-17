@@ -1,5 +1,3 @@
---   Design: deep-space dark · neon accent · card-based layout
--- ╚══════════════════════════════════════════════════════════════╝
 -- N3on Hub - Slap Battles Module (FULL)
 -- N3on Hub - Slap Battles Module (ADAPTADO ao Base)
 
@@ -7,15 +5,8 @@ if not _G.N3onHub then
 	warn("[Slap Battles Module] Base hub not loaded! Please load the base first.")
 -- Aguarda o Base Hub carregar (até 10s)
 local tries = 0
-repeat task.wait(1); tries += 1 until (_G.N3onHub and _G.N3onHub._loaded) or tries >= 20
-if not (_G.N3onHub and _G.N3onHub._loaded) then
-    warn("[N3on·Slap] Base Hub nao carregado!"); return
--- ╔══════════════════════════════════════╗
---   WAIT HUB LOAD (robusto)
--- ╚══════════════════════════════════════╝
-repeat task.wait(1); tries += 1 until _G.N3onHub or tries >= 20
+repeat task.wait(0.5); tries += 1 until _G.N3onHub or tries >= 20
 
-local function WaitHub()
 if not _G.N3onHub or not _G.N3onHub._loaded then
 	warn("[Slap Battles Module] Base hub não carregado! Execute o Base Hub primeiro.")
 return
@@ -453,28 +444,16 @@ Click()
 task.wait(0.1)
 @@ -549,33 +569,18 @@ end
 
-    local timeout = 15
-    local t0 = tick()
 ----------------------------------------------------------------
 -- TAB: FARM
 -- Usa Clear() e recria widgets direto no SC do Base Hub
 ----------------------------------------------------------------
 
-    repeat
-        task.wait()
 local function LoadFarmTab()
 	_G.N3onHub.GUI.Clear()
 	local SC  = _G.N3onHub.GUI.ScrollContent
 	local UCS = _G.N3onHub.GUI.UpdateCanvasSize
 
-        if _G.N3onHub
-        and _G.N3onHub._loaded
-        and _G.N3onHub.GUI
-        and _G.N3onHub.GUI.Hub
-        and _G.N3onHub.GUI.ScrollContent
-        and _G.N3onHub.Tab
-        and _G.N3onHub.Slider
-        and _G.N3onHub.Checkbox then
 	local title = Instance.new("TextLabel", SC)
 	title.Size = UDim2.new(1, 0, 0, 40)
 	title.BackgroundTransparency = 1
@@ -483,8 +462,6 @@ local function LoadFarmTab()
 	title.TextScaled = true
 	title.TextColor3 = Color3.fromRGB(255, 200, 100)
 
-            return true
-        end
 	-- AUTO FARM
 	local lFarm = Instance.new("TextLabel", SC)
 	lFarm.Size = UDim2.new(1, 0, 0, 28)
@@ -495,12 +472,10 @@ local function LoadFarmTab()
 	lFarm.TextColor3 = Color3.fromRGB(255, 200, 100)
 	lFarm.TextXAlignment = Enum.TextXAlignment.Left
 
-    until tick() - t0 > timeout
 	_G.N3onHub.Checkbox("Auto Farm (Tween + Click)", _G.N3onHub.SavedStates.autoFarm, function(v)
 		_G.N3onHub.SavedStates.autoFarm = v
 	Clear()
 
-    return false
 	TitleLabel("👏 Farm - Slap Battles", Color3.fromRGB(255, 200, 100))
 
 	SectionLabel("⚡ Auto Farm", Color3.fromRGB(255, 200, 100))
@@ -619,9 +594,6 @@ end)
 flingActive = v
 end)
 
-if not WaitHub() then
-    warn("[N3on·Slap] Base Hub nao carregou corretamente!")
-    return
 	_G.N3onHub.Slider("Fling Power", 100, 2000, _G.N3onHub.SavedStates.flingPower, function(v)
 		_G.N3onHub.SavedStates.flingPower = v
 	Slider("Fling Power", 100, 2000, SS.flingPower, function(v)
@@ -804,7 +776,6 @@ local hrp = GetHRP()
 @@ -821,12 +738,11 @@ local function LoadMiscTab()
 end
 
-local TS     = game:GetService("TweenService")
 ----------------------------------------------------------------
 -- REGISTRAR TABS
 -- O 3º argumento é ignorado pelo base (Y automático)
