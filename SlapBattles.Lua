@@ -526,57 +526,21 @@ local function StopContinuousTween()
 end
 
 ----------------------------------------------------------------
--- AttackTarget — 2 studs X, lookAt, pausa 3s a cada 5 slaps
-----------------------------------------------------------------
-
-local CLICKS_PER_TARGET = 8
-
-local function AttackTarget(target)
-	if not target or not target.Character then return end
-
-	local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
-	local tHum = target.Character:FindFirstChild("Humanoid")
-	if not tHRP or not tHum or tHum.Health <= 0 then return end
-
-	StartContinuousTween(
-		function()
-			local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-			if t then return t.Position + Vector3.new(2, 0, 0) end
-		end,
-		function()
-			local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-			if t then return t.Position end
-		end
-	)
-
-	local clicks = 0
-	while autoFarmActive and clicks < CLICKS_PER_TARGET do
-		if not target.Character then break end
-		local h = target.Character:FindFirstChild("Humanoid")
-		if not h or h.Health <= 0 then break end
-
-		Click()
-		clicks = clicks + 1
-
-		if clicks % 5 == 0 then
-			task.wait(3)
-		else
-			task.wait(0.05)
-		end
-	end
-end
-
-----------------------------------------------------------------
 -- AUTO FARM LOOP
+-- Lógica: por player, dá 1 click, troca de target, repeat.
+-- A cada 5 clicks TOTAIS faz pausa de 3s.
+-- O tween é atualizado toda vez que troca de target.
 ----------------------------------------------------------------
 
 local function AutoFarmLoop()
-	local farmTimer  = tick()
-	local onPause    = false
-	local farmIndex  = 1  -- índice atual na lista de targets (alterna entre players)
+	local farmTimer    = tick()
+	local onPause      = false
+	local farmIndex    = 1   -- alterna entre players
+	local totalClicks  = 0   -- contador global para a pausa de 5 clicks
 
 	while autoFarmActive do
 
+		-- pausa anti-kick a cada 5s
 		if not onPause and tick() - farmTimer >= 5 then
 			onPause = true
 			StopContinuousTween()
@@ -620,26 +584,53 @@ local function AutoFarmLoop()
 
 		local targets = GetAllInRange()
 
-		if #targets > 0 then
-			-- garante que o índice é válido para o tamanho atual da lista
-			if farmIndex > #targets then farmIndex = 1 end
-
-			local target = targets[farmIndex]
-
-			-- avança pro próximo player antes de atacar (alterna no próximo tick)
-			farmIndex = (farmIndex % #targets) + 1
-
-			if not autoFarmActive then break end
-			if tick() - farmTimer >= 5 then continue end
-
-			AttackTarget(target)
-			task.wait(0.05)
-		else
-			farmIndex = 1  -- reseta quando não há targets
+		if #targets == 0 then
+			farmIndex = 1
 			StopContinuousTween()
 			Click()
 			task.wait(0.1)
+			continue
 		end
+
+		-- corrige índice se a lista encolheu
+		if farmIndex > #targets then farmIndex = 1 end
+
+		local target = targets[farmIndex]
+
+		-- só ataca se o target for válido
+		local ok = false
+		pcall(function()
+			local tHRP = target.Character.HumanoidRootPart
+			local tHum = target.Character.Humanoid
+			if tHum.Health > 0 then ok = true end
+		end)
+
+		if ok then
+			-- move e olha pro target atual
+			StartContinuousTween(
+				function()
+					local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+					if t then return t.Position + Vector3.new(2, 0, 0) end
+				end,
+				function()
+					local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+					if t then return t.Position end
+				end
+			)
+
+			Click()
+			totalClicks = totalClicks + 1
+
+			-- a cada 5 clicks totais, pausa 3s
+			if totalClicks % 5 == 0 then
+				task.wait(3)
+			else
+				task.wait(0.05)
+			end
+		end
+
+		-- avança pro próximo player SEMPRE (mesmo se o atual foi inválido)
+		farmIndex = (farmIndex % #targets) + 1
 	end
 
 	StopContinuousTween()
