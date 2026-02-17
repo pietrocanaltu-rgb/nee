@@ -1218,12 +1218,50 @@ end
 
 
 ----------------------------------------------------------------
--- MONSTRO — lógica serverside
+-- MONSTRO DRAGÃO — serverside visual
+-- Parts criadas no workspace são visíveis pra todos.
+-- CFrame atualizado no Heartbeat cola as parts no personagem.
 ----------------------------------------------------------------
 
 local monsterActive    = false
 local monsterConns     = {}
-local monsterInstances = {}
+local monsterInstances = {}  -- parts/modelos no workspace
+local monsterColorIdx  = 1
+
+-- Paleta do dragão: preto/vermelho/laranja escuro
+local DRAGON_COLORS = {
+	Color3.fromRGB(180, 0,   0  ),  -- vermelho sangue
+	Color3.fromRGB(220, 60,  0  ),  -- laranja fogo
+	Color3.fromRGB(100, 0,   0  ),  -- vermelho escuro
+	Color3.fromRGB(255, 100, 0  ),  -- laranja vivo
+	Color3.fromRGB(50,  0,   0  ),  -- quase preto
+	Color3.fromRGB(200, 0,   50 ),  -- vermelho rosado
+}
+
+-- Cria uma part no workspace e registra pra cleanup
+local function NovaPart(tamanho, cor, material, transparencia)
+	local p = Instance.new("Part")
+	p.Size            = tamanho or Vector3.new(1,1,1)
+	p.Color           = cor    or Color3.fromRGB(180, 0, 0)
+	p.Material        = material or Enum.Material.Neon
+	p.Transparency    = transparencia or 0
+	p.Anchored        = true
+	p.CanCollide      = false
+	p.CastShadow      = false
+	p.Parent          = workspace
+	table.insert(monsterInstances, p)
+	return p
+end
+
+-- Adiciona efeito numa part
+local function AddEfeito(part, tipo, props)
+	local e = Instance.new(tipo, part)
+	for k, v in pairs(props or {}) do
+		pcall(function() e[k] = v end)
+	end
+	table.insert(monsterInstances, e)
+	return e
+end
 
 local function LimparMonstro()
 	for _, conn in ipairs(monsterConns) do
@@ -1236,123 +1274,236 @@ local function LimparMonstro()
 	end
 	monsterInstances = {}
 
-	-- reseta tamanho do personagem
+	-- reseta escala
 	local char = Player.Character
 	if not char then return end
-	for _, part in ipairs(char:GetDescendants()) do
-		if part:IsA("SpecialMesh") then
-			pcall(function() part.Scale = Vector3.new(1, 1, 1) end)
-		end
-	end
 	pcall(function()
 		local hum = char:FindFirstChildOfClass("Humanoid")
 		if hum then
-			hum.BodyDepthScale.Value   = 1
-			hum.BodyHeightScale.Value  = 1
-			hum.BodyWidthScale.Value   = 1
-			hum.HeadScale.Value        = 1
+			hum.BodyDepthScale.Value  = 1
+			hum.BodyHeightScale.Value = 1
+			hum.BodyWidthScale.Value  = 1
+			hum.HeadScale.Value       = 1
 		end
 	end)
+	-- reseta cor das parts
+	for _, p in ipairs(char:GetDescendants()) do
+		if p:IsA("BasePart") then
+			pcall(function() p.Color = Color3.fromRGB(163, 162, 165) end)
+		end
+	end
 end
-
-local MONSTER_COLORS = {
-	Color3.fromRGB(255, 0,   0  ),
-	Color3.fromRGB(255, 80,  0  ),
-	Color3.fromRGB(200, 0,   255),
-	Color3.fromRGB(0,   200, 255),
-	Color3.fromRGB(255, 255, 0  ),
-	Color3.fromRGB(0,   255, 80 ),
-}
 
 local function AtivarMonstro()
 	LimparMonstro()
 	local char = Player.Character
 	if not char then return end
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	local head = char:FindFirstChild("Head")
+	local torso = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+	if not hrp then return end
 
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hum then return end
-
-	-- 1. CORPO GIGANTE — escala pelo Humanoid
+	-- ════════════════════════════════════════
+	-- 1. CORPO GIGANTE
+	-- ════════════════════════════════════════
 	pcall(function()
-		hum.BodyDepthScale.Value   = 5
-		hum.BodyHeightScale.Value  = 5
-		hum.BodyWidthScale.Value   = 5
-		hum.HeadScale.Value        = 4
-	end)
-
-	-- 2. PARTÍCULAS / FOGO / FUMAÇA em cada part do corpo
-	for _, part in ipairs(char:GetDescendants()) do
-		if not part:IsA("BasePart") then continue end
-
-		-- Fogo
-		local fire = Instance.new("Fire", part)
-		fire.Size  = 8
-		fire.Heat  = 15
-		fire.Color = Color3.fromRGB(255, 50, 0)
-		fire.SecondaryColor = Color3.fromRGB(255, 200, 0)
-		table.insert(monsterInstances, fire)
-
-		-- Fumaça
-		local smoke = Instance.new("Smoke", part)
-		smoke.Size         = 3
-		smoke.Opacity      = 0.5
-		smoke.RiseVelocity = 8
-		smoke.Color        = Color3.fromRGB(80, 0, 80)
-		table.insert(monsterInstances, smoke)
-
-		-- Sparkles
-		local spark = Instance.new("Sparkles", part)
-		spark.SparkleColor = Color3.fromRGB(200, 0, 255)
-		table.insert(monsterInstances, spark)
-	end
-
-	-- 3. CORES PISCANDO LOUCAS — troca cor de todas as parts a cada 0.05s
-	local colorIndex = 1
-	local blinkConn = RunService.Heartbeat:Connect(function()
-		if not monsterActive then return end
-		local char2 = Player.Character
-		if not char2 then return end
-		colorIndex = (colorIndex % #MONSTER_COLORS) + 1
-		local col = MONSTER_COLORS[colorIndex]
-		for _, part in ipairs(char2:GetDescendants()) do
-			if part:IsA("BasePart") then
-				pcall(function() part.Color = col end)
-			end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum.BodyDepthScale.Value  = 3.5
+			hum.BodyHeightScale.Value = 3.5
+			hum.BodyWidthScale.Value  = 3.5
+			hum.HeadScale.Value       = 3
 		end
 	end)
-	table.insert(monsterConns, blinkConn)
 
-	-- 4. BILLBOARD "MONSTRO" flutuando na cabeça
-	local head = char:FindFirstChild("Head")
+	-- ════════════════════════════════════════
+	-- 2. CORPO PRETO COM BORDA NEON VERMELHA
+	-- ════════════════════════════════════════
+	for _, p in ipairs(char:GetDescendants()) do
+		if p:IsA("BasePart") then
+			pcall(function()
+				p.Color    = Color3.fromRGB(15, 0, 0)
+				p.Material = Enum.Material.SmoothPlastic
+			end)
+		end
+	end
+
+	-- ════════════════════════════════════════
+	-- 3. ASAS DE DRAGÃO (4 blocos em V)
+	-- ════════════════════════════════════════
+	-- asa esquerda superior
+	local asaEsqCima = NovaPart(Vector3.new(5, 0.3, 2.5), Color3.fromRGB(100,0,0), Enum.Material.SmoothPlastic)
+	-- asa esquerda inferior
+	local asaEsqBaixo = NovaPart(Vector3.new(4, 0.3, 2), Color3.fromRGB(60,0,0), Enum.Material.SmoothPlastic)
+	-- asa direita superior
+	local asaDirCima = NovaPart(Vector3.new(5, 0.3, 2.5), Color3.fromRGB(100,0,0), Enum.Material.SmoothPlastic)
+	-- asa direita inferior
+	local asaDirBaixo = NovaPart(Vector3.new(4, 0.3, 2), Color3.fromRGB(60,0,0), Enum.Material.SmoothPlastic)
+	-- nervuras das asas (blocos finos neon)
+	local nervE1 = NovaPart(Vector3.new(0.2, 0.2, 2.5), Color3.fromRGB(255,0,0), Enum.Material.Neon)
+	local nervE2 = NovaPart(Vector3.new(0.2, 0.2, 2),   Color3.fromRGB(255,0,0), Enum.Material.Neon)
+	local nervD1 = NovaPart(Vector3.new(0.2, 0.2, 2.5), Color3.fromRGB(255,0,0), Enum.Material.Neon)
+	local nervD2 = NovaPart(Vector3.new(0.2, 0.2, 2),   Color3.fromRGB(255,0,0), Enum.Material.Neon)
+
+	-- ════════════════════════════════════════
+	-- 4. CAUDA (série de blocos diminuindo)
+	-- ════════════════════════════════════════
+	local cauda = {}
+	local caudaTamanhos = {1.2, 1.0, 0.85, 0.7, 0.55, 0.4, 0.3}
+	for i, s in ipairs(caudaTamanhos) do
+		local seg = NovaPart(Vector3.new(s, s, s), Color3.fromRGB(120, 0, 0), Enum.Material.SmoothPlastic)
+		AddEfeito(seg, "Fire", {Size=s*3, Heat=10, Color=Color3.fromRGB(200,0,0), SecondaryColor=Color3.fromRGB(100,0,0)})
+		table.insert(cauda, seg)
+	end
+	-- ponta da cauda: triângulo/spike neon
+	local pontaCauda = NovaPart(Vector3.new(0.4, 1.2, 0.4), Color3.fromRGB(255, 0, 0), Enum.Material.Neon)
+
+	-- ════════════════════════════════════════
+	-- 5. CHIFRES (2 spikes na cabeça)
+	-- ════════════════════════════════════════
+	local chifreE = NovaPart(Vector3.new(0.3, 1.8, 0.3), Color3.fromRGB(180, 0, 0), Enum.Material.Neon)
+	local chifreD = NovaPart(Vector3.new(0.3, 1.8, 0.3), Color3.fromRGB(180, 0, 0), Enum.Material.Neon)
+
+	-- ════════════════════════════════════════
+	-- 6. OLHOS BRILHANTES (2 esferas neon)
+	-- ════════════════════════════════════════
+	local olhoE = NovaPart(Vector3.new(0.5, 0.5, 0.5), Color3.fromRGB(255, 50, 0), Enum.Material.Neon)
+	local olhoD = NovaPart(Vector3.new(0.5, 0.5, 0.5), Color3.fromRGB(255, 50, 0), Enum.Material.Neon)
+	-- brilho nos olhos
+	AddEfeito(olhoE, "PointLight", {Brightness=5, Range=8, Color=Color3.fromRGB(255,50,0)})
+	AddEfeito(olhoD, "PointLight", {Brightness=5, Range=8, Color=Color3.fromRGB(255,50,0)})
+
+	-- ════════════════════════════════════════
+	-- 7. AURA DE FOGO / FUMAÇA / SPARKLES no torso
+	-- ════════════════════════════════════════
+	if torso then
+		AddEfeito(torso, "Fire", {
+			Size=12, Heat=20,
+			Color=Color3.fromRGB(255,0,0),
+			SecondaryColor=Color3.fromRGB(200,80,0)
+		})
+		AddEfeito(torso, "Smoke", {
+			Size=5, Opacity=0.4, RiseVelocity=12,
+			Color=Color3.fromRGB(30,0,0)
+		})
+		AddEfeito(torso, "Sparkles", {
+			SparkleColor=Color3.fromRGB(255,100,0)
+		})
+	end
+
+	-- ════════════════════════════════════════
+	-- 8. GARRA / ESPINHOS NAS COSTAS (6 spikes)
+	-- ════════════════════════════════════════
+	local espinhos = {}
+	for i = 1, 6 do
+		local sz = 0.15 + (i % 3) * 0.1
+		local sp = NovaPart(
+			Vector3.new(sz, 1 + (i%3)*0.4, sz),
+			Color3.fromRGB(150, 0, 0),
+			Enum.Material.Neon
+		)
+		table.insert(espinhos, sp)
+	end
+
+	-- ════════════════════════════════════════
+	-- 9. BILLBOARD "👹 DRAGÃO CORRUPTO 👹"
+	-- ════════════════════════════════════════
 	if head then
 		local bb = Instance.new("BillboardGui", head)
-		bb.Size         = UDim2.fromOffset(200, 50)
-		bb.StudsOffset  = Vector3.new(0, 4, 0)
-		bb.AlwaysOnTop  = true
+		bb.Size        = UDim2.fromOffset(260, 60)
+		bb.StudsOffset = Vector3.new(0, 5, 0)
+		bb.AlwaysOnTop = true
 		table.insert(monsterInstances, bb)
 
 		local lbl = Instance.new("TextLabel", bb)
-		lbl.Size                  = UDim2.new(1, 0, 1, 0)
+		lbl.Size                   = UDim2.new(1,0,1,0)
 		lbl.BackgroundTransparency = 1
-		lbl.Font                  = Enum.Font.GothamBold
-		lbl.TextScaled            = true
+		lbl.Font                   = Enum.Font.GothamBold
+		lbl.TextScaled             = true
 		lbl.TextStrokeTransparency = 0
-		lbl.TextStrokeColor3      = Color3.new(0, 0, 0)
+		lbl.TextStrokeColor3       = Color3.new(0,0,0)
+		lbl.TextColor3             = Color3.fromRGB(255,0,0)
+		lbl.Text                   = "👹 DRAGÃO CORRUPTO 👹"
 
-		-- texto do billboard pisca de cor também
+		-- pisca o texto
 		local lblConn = RunService.Heartbeat:Connect(function()
 			if not monsterActive then return end
-			lbl.TextColor3 = MONSTER_COLORS[(colorIndex % #MONSTER_COLORS) + 1]
-			lbl.Text = "👹 MONSTRO 👹"
+			lbl.TextColor3 = DRAGON_COLORS[monsterColorIdx]
 		end)
 		table.insert(monsterConns, lblConn)
 	end
+
+	-- ════════════════════════════════════════
+	-- 10. HEARTBEAT — atualiza posição de tudo
+	-- ════════════════════════════════════════
+	local t = 0
+	local updateConn = RunService.Heartbeat:Connect(function(dt)
+		if not monsterActive then return end
+		t = t + dt
+
+		local c = Player.Character
+		if not c then return end
+		local h = c:FindFirstChild("HumanoidRootPart")
+		if not h then return end
+		local cf = h.CFrame
+
+		-- cicla cor
+		monsterColorIdx = math.floor(t * 8) % #DRAGON_COLORS + 1
+
+		-- cor piscando no corpo
+		local bodyCol = DRAGON_COLORS[monsterColorIdx]
+		for _, p in ipairs(c:GetDescendants()) do
+			if p:IsA("BasePart") then
+				pcall(function() p.Color = bodyCol end)
+			end
+		end
+
+		-- ASAS
+		local wingAngle = math.sin(t * 3) * 0.3  -- bate as asas
+		asaEsqCima.CFrame  = cf * CFrame.new(-4.5, 1.5, -0.5) * CFrame.Angles(0, 0, -0.4 - wingAngle) * CFrame.Angles(0.1, 0.2, 0)
+		asaEsqBaixo.CFrame = cf * CFrame.new(-6.5, 0.2, -0.5) * CFrame.Angles(0, 0, -0.7 - wingAngle) * CFrame.Angles(0.2, 0.3, 0)
+		asaDirCima.CFrame  = cf * CFrame.new( 4.5, 1.5, -0.5) * CFrame.Angles(0, 0,  0.4 + wingAngle) * CFrame.Angles(0.1, -0.2, 0)
+		asaDirBaixo.CFrame = cf * CFrame.new( 6.5, 0.2, -0.5) * CFrame.Angles(0, 0,  0.7 + wingAngle) * CFrame.Angles(0.2, -0.3, 0)
+
+		-- nervuras nas asas
+		nervE1.CFrame = asaEsqCima.CFrame  * CFrame.new(0, 0, 0)
+		nervE2.CFrame = asaEsqBaixo.CFrame * CFrame.new(0, 0, 0)
+		nervD1.CFrame = asaDirCima.CFrame  * CFrame.new(0, 0, 0)
+		nervD2.CFrame = asaDirBaixo.CFrame * CFrame.new(0, 0, 0)
+
+		-- CAUDA — serpenteia atrás
+		for i, seg in ipairs(cauda) do
+			local sn = math.sin(t*2 + i*0.5) * 0.4
+			seg.CFrame = cf * CFrame.new(0, -1 - i*0.3, 1.2 + i*0.9) * CFrame.Angles(0.3*i, sn, 0)
+		end
+		pontaCauda.CFrame = cf * CFrame.new(
+			math.sin(t*2 + #cauda*0.5)*0.4,
+			-1 - #cauda*0.3,
+			1.2 + #cauda*0.9 + 0.8
+		) * CFrame.Angles(0.8, 0, 0)
+
+		-- CHIFRES
+		chifreE.CFrame = cf * CFrame.new(-0.7, 2.8, -0.3) * CFrame.Angles(0.2, -0.2, -0.2)
+		chifreD.CFrame = cf * CFrame.new( 0.7, 2.8, -0.3) * CFrame.Angles(0.2,  0.2,  0.2)
+
+		-- OLHOS
+		olhoE.CFrame = cf * CFrame.new(-0.55, 1.8, -1.6)
+		olhoD.CFrame = cf * CFrame.new( 0.55, 1.8, -1.6)
+
+		-- ESPINHOS NAS COSTAS — fileira
+		for i, sp in ipairs(espinhos) do
+			local xOff = (i - 3.5) * 0.7
+			local yOff = 2 + math.sin(t*3 + i) * 0.15
+			sp.CFrame = cf * CFrame.new(xOff, yOff, 0.3) * CFrame.Angles(-0.3, 0, 0)
+		end
+	end)
+	table.insert(monsterConns, updateConn)
 end
 
 -- reativa ao respawnar
 Player.CharacterAdded:Connect(function()
 	if monsterActive then
-		task.wait(1)
+		task.wait(1.5)
 		AtivarMonstro()
 	end
 end)
@@ -1369,22 +1520,22 @@ local function LoadMonsterTab()
 	local title = Instance.new("TextLabel", SC)
 	title.Size = UDim2.new(1, 0, 0, 40)
 	title.BackgroundTransparency = 1
-	title.Text = "👹 Monstro"
+	title.Text = "👹 Dragão Corrupto"
 	title.Font = Enum.Font.GothamBold
 	title.TextScaled = true
-	title.TextColor3 = Color3.fromRGB(255, 80, 80)
+	title.TextColor3 = Color3.fromRGB(255, 60, 60)
 
 	local desc = Instance.new("TextLabel", SC)
-	desc.Size = UDim2.new(1, 0, 0, 50)
+	desc.Size = UDim2.new(1, 0, 0, 60)
 	desc.BackgroundTransparency = 1
-	desc.Text = "Vira um monstro gigante com fogo, fumaça, brilhos e cores piscando loucas. Visível pra todo mundo no servidor!"
+	desc.Text = "Vira um dragão corrompido gigante: asas que batem, cauda serpenteando, chifres, olhos brilhantes, espinhos nas costas, fogo/fumaça e cores piscando. Visível pra TODOS no servidor!"
 	desc.Font = Enum.Font.Gotham
-	desc.TextSize = 12
-	desc.TextColor3 = Color3.fromRGB(200, 200, 200)
+	desc.TextSize = 11
+	desc.TextColor3 = Color3.fromRGB(200, 150, 150)
 	desc.TextXAlignment = Enum.TextXAlignment.Left
 	desc.TextWrapped = true
 
-	_G.N3onHub.Checkbox("👹 Ativar Monstro", monsterActive, function(v)
+	_G.N3onHub.Checkbox("👹 Ativar Dragão Corrupto", monsterActive, function(v)
 		monsterActive = v
 		if v then
 			AtivarMonstro()
