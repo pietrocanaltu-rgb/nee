@@ -562,7 +562,7 @@ local function AutoFarmLoop()
 			StopContinuousTween()
 			local hrpPause = GetHRP()
 			if hrpPause then hrpPause.Anchored = true end
-			task.wait(1.5)
+			task.wait(0.75)
 			local hrpResume = GetHRP()
 			if hrpResume then hrpResume.Anchored = false end
 			onPause   = false
@@ -614,7 +614,10 @@ local function AutoFarmLoop()
 		StartContinuousTween(
 			function()
 				local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
-				if t then return (t.CFrame * CFrame.new(0, 0, 3)).Position end
+				if t then
+					local behind = (t.CFrame * CFrame.new(0, 0, 3)).Position
+					return Vector3.new(behind.X, t.Position.Y, behind.Z)
+				end
 			end,
 			function()
 				local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
