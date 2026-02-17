@@ -1,5 +1,4 @@
 -- N3on Hub - Slap Battles Module
--- Funcionalidades exclusivas para Slap Battles
 
 if not _G.N3onHub then
 	warn("[Slap Battles Module] Base hub not loaded! Please load the base first.")
@@ -18,82 +17,121 @@ print("[Slap Battles Module] Loading...")
 -- SAVED STATES
 ----------------------------------------------------------------
 
-_G.N3onHub.SavedStates.autoFarm = false
-_G.N3onHub.SavedStates.farmSpeed = 30
+_G.N3onHub.SavedStates.autoFarm      = false
+_G.N3onHub.SavedStates.farmSpeed     = 30
 _G.N3onHub.SavedStates.hitboxEnabled = false
-_G.N3onHub.SavedStates.hitboxSize = 15
-_G.N3onHub.SavedStates.hitboxTransparency = 0.9
-_G.N3onHub.SavedStates.teamCheck = false
+_G.N3onHub.SavedStates.hitboxSize    = 15
+_G.N3onHub.SavedStates.hitboxTrans   = 0.9
+_G.N3onHub.SavedStates.teamCheck     = false
 
-local autoFarmActive = false
-local hitboxActive = false
-local safeZonePart = nil
-local activeTween = nil
-local hitboxConnection = nil
+local autoFarmActive  = false
+local hitboxActive    = false
+local activeTween     = nil
+local hitboxConn      = nil
 
 ----------------------------------------------------------------
 -- UTILITY
 ----------------------------------------------------------------
 
 local function GetHRP()
-	local char = Player.Character
-	return char and char:FindFirstChild("HumanoidRootPart")
+	local c = Player.Character
+	return c and c:FindFirstChild("HumanoidRootPart")
 end
 
 local function GetHum()
-	local char = Player.Character
-	return char and char:FindFirstChild("Humanoid")
+	local c = Player.Character
+	return c and c:FindFirstChild("Humanoid")
 end
 
 ----------------------------------------------------------------
--- HITBOX EXPANDER (IGUAL AO SCRIPT REFERÊNCIA)
+-- SAFE ZONE (CRIADA AUTOMATICAMENTE AO CARREGAR)
+----------------------------------------------------------------
+
+local safeZone = Instance.new("Part")
+safeZone.Name        = "N3onSafeZone"
+safeZone.Size        = Vector3.new(30, 1, 30)
+safeZone.Anchored    = true
+safeZone.CanCollide  = true
+safeZone.BrickColor  = BrickColor.new("Bright green")
+safeZone.Material    = Enum.Material.SmoothPlastic
+safeZone.Transparency = 0.4
+safeZone.CFrame      = CFrame.new(0, 500, 99999)
+safeZone.Parent      = workspace
+
+local bb = Instance.new("BillboardGui", safeZone)
+bb.Size         = UDim2.fromOffset(200, 40)
+bb.StudsOffset  = Vector3.new(0, 4, 0)
+bb.AlwaysOnTop  = true
+
+local bbLabel = Instance.new("TextLabel", bb)
+bbLabel.Size                 = UDim2.new(1, 0, 1, 0)
+bbLabel.BackgroundTransparency = 1
+bbLabel.Text                 = "🟢 SAFE ZONE"
+bbLabel.Font                 = Enum.Font.GothamBold
+bbLabel.TextSize             = 18
+bbLabel.TextColor3           = Color3.new(0, 1, 0)
+bbLabel.TextStrokeTransparency = 0.3
+
+local function TeleportToSafeZone()
+	local hrp = GetHRP()
+	if hrp then
+		hrp.CFrame = safeZone.CFrame + Vector3.new(0, 4, 0)
+	end
+end
+
+----------------------------------------------------------------
+-- HITBOX EXPANDER (IGUAL AO SCRIPT REFERÊNCIA - RENDERSTEP)
 ----------------------------------------------------------------
 
 local function StartHitbox()
-	hitboxConnection = RunService.RenderStepped:Connect(function()
+	-- Evitar duplo connect
+	if hitboxConn then
+		hitboxConn:Disconnect()
+		hitboxConn = nil
+	end
+
+	hitboxConn = RunService.RenderStepped:Connect(function()
 		if not hitboxActive then return end
 
-		for _, plr in pairs(Players:GetPlayers()) do
-			if plr == Player then continue end
+		for _, plr in next, Players:GetPlayers() do
+			if plr.Name == Player.Name then continue end
 
-			-- Team check
+			-- Team Check
 			if _G.N3onHub.SavedStates.teamCheck then
 				if Player.Team == plr.Team then continue end
 			end
 
 			pcall(function()
-				local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-				if hrp then
-					local s = _G.N3onHub.SavedStates.hitboxSize
-					hrp.Size = Vector3.new(s, s, s)
-					hrp.Transparency = _G.N3onHub.SavedStates.hitboxTransparency
-					hrp.BrickColor = BrickColor.new("Really black")
-					hrp.Material = Enum.Material.Neon
-					hrp.CanCollide = false
-				end
+				local hrp = plr.Character.HumanoidRootPart
+				local s   = _G.N3onHub.SavedStates.hitboxSize
+				local t   = _G.N3onHub.SavedStates.hitboxTrans
+
+				hrp.Size         = Vector3.new(s, s, s)
+				hrp.Transparency = t
+				hrp.BrickColor   = BrickColor.new("Really black")
+				hrp.Material     = Enum.Material.Neon
+				hrp.CanCollide   = false
 			end)
 		end
 	end)
 end
 
 local function StopHitbox()
-	if hitboxConnection then
-		hitboxConnection:Disconnect()
-		hitboxConnection = nil
+	if hitboxConn then
+		hitboxConn:Disconnect()
+		hitboxConn = nil
 	end
 
-	-- Restaurar HRPs
-	for _, plr in pairs(Players:GetPlayers()) do
-		if plr == Player then continue end
+	-- Restaurar igual script referência
+	for _, plr in next, Players:GetPlayers() do
+		if plr.Name == Player.Name then continue end
 		pcall(function()
-			local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-			if hrp then
-				hrp.Size = Vector3.new(2, 2, 1)
-				hrp.Transparency = 1
-				hrp.BrickColor = BrickColor.new("Medium stone grey")
-				hrp.Material = Enum.Material.Plastic
-				hrp.CanCollide = false
-			end
+			local hrp = plr.Character.HumanoidRootPart
+			hrp.Size         = Vector3.new(2, 2, 1)
+			hrp.Transparency = 1
+			hrp.BrickColor   = BrickColor.new("Medium stone grey")
+			hrp.Material     = Enum.Material.Plastic
+			hrp.CanCollide   = false
 		end)
 	end
 end
@@ -102,34 +140,34 @@ end
 -- AUTO CLICK
 ----------------------------------------------------------------
 
-local function SimulateClick()
-	VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+local function Click()
+	VIM:SendMouseButtonEvent(0, 0, 0, true,  game, 1)
 	task.wait(0.01)
 	VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
 end
 
 ----------------------------------------------------------------
--- AUTO FARM (TWEEN + AUTO CLICK)
+-- AUTO FARM (TWEEN Y-15 + AUTO CLICK)
 ----------------------------------------------------------------
 
-local function GetClosestPlayer()
+local function GetClosest()
 	local hrp = GetHRP()
 	if not hrp then return nil end
 
-	local closest, closestDist = nil, math.huge
+	local closest, best = nil, math.huge
 
 	for _, plr in pairs(Players:GetPlayers()) do
 		if plr == Player then continue end
 
 		pcall(function()
-			local tHRP = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-			local tHum = plr.Character and plr.Character:FindFirstChild("Humanoid")
+			local tHRP = plr.Character.HumanoidRootPart
+			local tHum = plr.Character.Humanoid
 
-			if tHRP and tHum and tHum.Health > 0 then
-				local dist = (hrp.Position - tHRP.Position).Magnitude
-				if dist < closestDist then
+			if tHum.Health > 0 then
+				local d = (hrp.Position - tHRP.Position).Magnitude
+				if d < best then
 					closest = plr
-					closestDist = dist
+					best    = d
 				end
 			end
 		end)
@@ -138,27 +176,24 @@ local function GetClosestPlayer()
 	return closest
 end
 
-local function TweenToTarget(target)
+local function TweenTo(target)
 	local hrp = GetHRP()
-	if not hrp or not target or not target.Character then return false end
+	if not hrp or not target or not target.Character then return end
 
 	local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
-	if not tHRP then return false end
+	if not tHRP then return end
 
-	-- Posição: mesma X/Z do target, mas Y = target.Y - 15 (embaixo)
-	local targetPos = tHRP.Position + Vector3.new(0, -15, 0)
-	local dist = (hrp.Position - targetPos).Magnitude
-	local duration = dist / (_G.N3onHub.SavedStates.farmSpeed * 10)
+	local goalPos = tHRP.Position + Vector3.new(0, -15, 0)
+	local dist    = (hrp.Position - goalPos).Magnitude
+	local dur     = math.max(dist / (_G.N3onHub.SavedStates.farmSpeed * 10), 0.05)
 
 	activeTween = TweenService:Create(
 		hrp,
-		TweenInfo.new(math.max(duration, 0.05), Enum.EasingStyle.Linear),
-		{CFrame = CFrame.new(targetPos)}
+		TweenInfo.new(dur, Enum.EasingStyle.Linear),
+		{CFrame = CFrame.new(goalPos)}
 	)
-
 	activeTween:Play()
 	activeTween.Completed:Wait()
-	return true
 end
 
 local function AutoFarmLoop()
@@ -171,131 +206,69 @@ local function AutoFarmLoop()
 			continue
 		end
 
-		local target = GetClosestPlayer()
+		local target = GetClosest()
 
 		if target then
-			-- Tween até o target (Y -15)
-			TweenToTarget(target)
+			TweenTo(target)
 
-			-- Auto click rápido enquanto está perto
-			local startTime = tick()
-			while autoFarmActive and tick() - startTime < 0.8 do
-				SimulateClick()
+			local t0 = tick()
+			while autoFarmActive and tick() - t0 < 0.8 do
+				Click()
 				task.wait(0.01)
 			end
 		else
-			-- Sem targets, só clica
-			SimulateClick()
+			Click()
 			task.wait(0.1)
 		end
 	end
 end
 
 ----------------------------------------------------------------
--- SAFE ZONE
-----------------------------------------------------------------
-
-local function CreateSafeZone()
-	-- Remove parte antiga se existir
-	if safeZonePart and safeZonePart.Parent then
-		safeZonePart:Destroy()
-	end
-
-	-- Criar parte longe do spawn
-	local part = Instance.new("Part")
-	part.Size = Vector3.new(20, 1, 20)
-	part.Anchored = true
-	part.CanCollide = true
-	part.BrickColor = BrickColor.new("Bright green")
-	part.Material = Enum.Material.SmoothPlastic
-	part.Transparency = 0.5
-	part.Name = "N3onSafeZone"
-	-- Posição bem longe do mapa principal
-	part.CFrame = CFrame.new(0, 100, 9999)
-	part.Parent = workspace
-
-	-- Placa
-	local billboard = Instance.new("BillboardGui", part)
-	billboard.Size = UDim2.fromOffset(200, 50)
-	billboard.StudsOffset = Vector3.new(0, 3, 0)
-	billboard.AlwaysOnTop = true
-
-	local label = Instance.new("TextLabel", billboard)
-	label.Size = UDim2.new(1, 0, 1, 0)
-	label.BackgroundTransparency = 1
-	label.Text = "🟢 SAFE ZONE"
-	label.Font = Enum.Font.GothamBold
-	label.TextSize = 18
-	label.TextColor3 = Color3.new(0, 1, 0)
-	label.TextStrokeTransparency = 0.3
-
-	safeZonePart = part
-end
-
-local function TeleportToSafeZone()
-	local hrp = GetHRP()
-	if not hrp then return end
-
-	-- Criar safe zone se não existir
-	if not safeZonePart or not safeZonePart.Parent then
-		CreateSafeZone()
-	end
-
-	hrp.CFrame = safeZonePart.CFrame + Vector3.new(0, 3, 0)
-end
-
-----------------------------------------------------------------
--- LOAD SLAP BATTLES FARM TAB
+-- GUI TAB
 ----------------------------------------------------------------
 
 local function LoadSlapBattlesFarm()
 	_G.N3onHub.GUI.Clear()
 
-	local ScrollContent = _G.N3onHub.GUI.ScrollContent
-	local UpdateCanvasSize = _G.N3onHub.GUI.UpdateCanvasSize
+	local SC  = _G.N3onHub.GUI.ScrollContent
+	local UCS = _G.N3onHub.GUI.UpdateCanvasSize
 
 	-- Título
-	local title = Instance.new("TextLabel", ScrollContent)
-	title.Size = UDim2.new(1, 0, 0, 40)
+	local title = Instance.new("TextLabel", SC)
+	title.Size               = UDim2.new(1, 0, 0, 40)
 	title.BackgroundTransparency = 1
-	title.Text = "👏 Farm - Slap Battles"
-	title.Font = Enum.Font.GothamBold
-	title.TextScaled = true
-	title.TextColor3 = Color3.fromRGB(255, 200, 100)
+	title.Text               = "👏 Farm - Slap Battles"
+	title.Font               = Enum.Font.GothamBold
+	title.TextScaled         = true
+	title.TextColor3         = Color3.fromRGB(255, 200, 100)
 
-	-- Info
-	local info = Instance.new("TextLabel", ScrollContent)
-	info.Size = UDim2.new(1, 0, 0, 60)
+	local info = Instance.new("TextLabel", SC)
+	info.Size                = UDim2.new(1, 0, 0, 50)
 	info.BackgroundTransparency = 1
-	info.Text = "Tween vai até os players (Y -15).\nAuto Click bate neles automaticamente."
-	info.Font = Enum.Font.Gotham
-	info.TextScaled = true
-	info.TextColor3 = Color3.fromRGB(200, 200, 200)
-	info.TextXAlignment = Enum.TextXAlignment.Left
-	info.TextWrapped = true
+	info.Text                = "Tween vai Y-15 abaixo dos players.\nAuto Click bate automaticamente."
+	info.Font                = Enum.Font.Gotham
+	info.TextScaled          = true
+	info.TextColor3          = Color3.fromRGB(180, 180, 180)
+	info.TextXAlignment      = Enum.TextXAlignment.Left
+	info.TextWrapped         = true
 
-	-- === AUTO FARM ===
-	local farmTitle = Instance.new("TextLabel", ScrollContent)
-	farmTitle.Size = UDim2.new(1, 0, 0, 30)
-	farmTitle.BackgroundTransparency = 1
-	farmTitle.Text = "⚡ Auto Farm"
-	farmTitle.Font = Enum.Font.GothamBold
-	farmTitle.TextSize = 15
-	farmTitle.TextColor3 = Color3.fromRGB(255, 200, 100)
-	farmTitle.TextXAlignment = Enum.TextXAlignment.Left
+	-- AUTO FARM
+	local lFarm = Instance.new("TextLabel", SC)
+	lFarm.Size               = UDim2.new(1, 0, 0, 28)
+	lFarm.BackgroundTransparency = 1
+	lFarm.Text               = "⚡ Auto Farm"
+	lFarm.Font               = Enum.Font.GothamBold
+	lFarm.TextSize           = 15
+	lFarm.TextColor3         = Color3.fromRGB(255, 200, 100)
+	lFarm.TextXAlignment     = Enum.TextXAlignment.Left
 
 	_G.N3onHub.Checkbox("Auto Farm (Tween + Click)", _G.N3onHub.SavedStates.autoFarm, function(v)
 		_G.N3onHub.SavedStates.autoFarm = v
 		autoFarmActive = v
 		if v then
-			spawn(function()
-				AutoFarmLoop()
-			end)
+			spawn(AutoFarmLoop)
 		else
-			if activeTween then
-				activeTween:Cancel()
-				activeTween = nil
-			end
+			if activeTween then activeTween:Cancel() activeTween = nil end
 		end
 	end)
 
@@ -303,24 +276,20 @@ local function LoadSlapBattlesFarm()
 		_G.N3onHub.SavedStates.farmSpeed = v
 	end)
 
-	-- === HITBOX EXPANDER ===
-	local hitboxTitle = Instance.new("TextLabel", ScrollContent)
-	hitboxTitle.Size = UDim2.new(1, 0, 0, 30)
-	hitboxTitle.BackgroundTransparency = 1
-	hitboxTitle.Text = "🎯 Hitbox Expander"
-	hitboxTitle.Font = Enum.Font.GothamBold
-	hitboxTitle.TextSize = 15
-	hitboxTitle.TextColor3 = Color3.fromRGB(255, 100, 100)
-	hitboxTitle.TextXAlignment = Enum.TextXAlignment.Left
+	-- HITBOX EXPANDER
+	local lHitbox = Instance.new("TextLabel", SC)
+	lHitbox.Size               = UDim2.new(1, 0, 0, 28)
+	lHitbox.BackgroundTransparency = 1
+	lHitbox.Text               = "🎯 Hitbox Expander"
+	lHitbox.Font               = Enum.Font.GothamBold
+	lHitbox.TextSize           = 15
+	lHitbox.TextColor3         = Color3.fromRGB(255, 100, 100)
+	lHitbox.TextXAlignment     = Enum.TextXAlignment.Left
 
 	_G.N3onHub.Checkbox("Enable Hitbox", _G.N3onHub.SavedStates.hitboxEnabled, function(v)
 		_G.N3onHub.SavedStates.hitboxEnabled = v
 		hitboxActive = v
-		if v then
-			StartHitbox()
-		else
-			StopHitbox()
-		end
+		if v then StartHitbox() else StopHitbox() end
 	end)
 
 	_G.N3onHub.Checkbox("Team Check", _G.N3onHub.SavedStates.teamCheck, function(v)
@@ -331,65 +300,48 @@ local function LoadSlapBattlesFarm()
 		_G.N3onHub.SavedStates.hitboxSize = v
 	end)
 
-	_G.N3onHub.Slider("Hitbox Transparency", 1, 10, math.floor(_G.N3onHub.SavedStates.hitboxTransparency * 10), function(v)
-		_G.N3onHub.SavedStates.hitboxTransparency = v / 10
+	-- Transparency slider: 1-10 mapeado para 0.1-1.0
+	_G.N3onHub.Slider("Hitbox Transparency (x10)", 1, 10, math.floor(_G.N3onHub.SavedStates.hitboxTrans * 10), function(v)
+		_G.N3onHub.SavedStates.hitboxTrans = v / 10
 	end)
 
-	-- === SAFE ZONE ===
-	local safeTitle = Instance.new("TextLabel", ScrollContent)
-	safeTitle.Size = UDim2.new(1, 0, 0, 30)
-	safeTitle.BackgroundTransparency = 1
-	safeTitle.Text = "🟢 Safe Zone"
-	safeTitle.Font = Enum.Font.GothamBold
-	safeTitle.TextSize = 15
-	safeTitle.TextColor3 = Color3.fromRGB(100, 255, 100)
-	safeTitle.TextXAlignment = Enum.TextXAlignment.Left
+	-- SAFE ZONE
+	local lSafe = Instance.new("TextLabel", SC)
+	lSafe.Size               = UDim2.new(1, 0, 0, 28)
+	lSafe.BackgroundTransparency = 1
+	lSafe.Text               = "🟢 Safe Zone"
+	lSafe.Font               = Enum.Font.GothamBold
+	lSafe.TextSize           = 15
+	lSafe.TextColor3         = Color3.fromRGB(100, 255, 100)
+	lSafe.TextXAlignment     = Enum.TextXAlignment.Left
 
-	local safeInfo = Instance.new("TextLabel", ScrollContent)
-	safeInfo.Size = UDim2.new(1, 0, 0, 40)
-	safeInfo.BackgroundTransparency = 1
-	safeInfo.Text = "Cria uma plataforma longe do mapa.\nNinguém consegue te alcançar lá."
-	safeInfo.Font = Enum.Font.Gotham
-	safeInfo.TextScaled = true
-	safeInfo.TextColor3 = Color3.fromRGB(180, 180, 180)
-	safeInfo.TextXAlignment = Enum.TextXAlignment.Left
-	safeInfo.TextWrapped = true
+	local safeInfo2 = Instance.new("TextLabel", SC)
+	safeInfo2.Size               = UDim2.new(1, 0, 0, 35)
+	safeInfo2.BackgroundTransparency = 1
+	safeInfo2.Text               = "Plataforma criada em Y=500, Z=99999.\nNinguém consegue te alcançar lá."
+	safeInfo2.Font               = Enum.Font.Gotham
+	safeInfo2.TextScaled         = true
+	safeInfo2.TextColor3         = Color3.fromRGB(160, 160, 160)
+	safeInfo2.TextXAlignment     = Enum.TextXAlignment.Left
+	safeInfo2.TextWrapped        = true
 
-	local createBtn = Instance.new("TextButton", ScrollContent)
-	createBtn.Size = UDim2.new(1, 0, 0, 40)
-	createBtn.Text = "🔨 Create Safe Zone"
-	createBtn.Font = Enum.Font.GothamBold
-	createBtn.TextSize = 14
-	createBtn.BackgroundColor3 = Color3.fromRGB(40, 100, 40)
-	createBtn.TextColor3 = Color3.new(1, 1, 1)
-	Instance.new("UICorner", createBtn)
-
-	createBtn.MouseButton1Click:Connect(function()
-		CreateSafeZone()
-		createBtn.Text = "✅ Safe Zone Created!"
-		task.wait(2)
-		createBtn.Text = "🔨 Create Safe Zone"
-	end)
-
-	local tpBtn = Instance.new("TextButton", ScrollContent)
-	tpBtn.Size = UDim2.new(1, 0, 0, 40)
-	tpBtn.Text = "🟢 TP to Safe Zone"
-	tpBtn.Font = Enum.Font.GothamBold
-	tpBtn.TextSize = 14
+	local tpBtn = Instance.new("TextButton", SC)
+	tpBtn.Size             = UDim2.new(1, 0, 0, 40)
+	tpBtn.Text             = "🟢 TP to Safe Zone"
+	tpBtn.Font             = Enum.Font.GothamBold
+	tpBtn.TextSize         = 14
 	tpBtn.BackgroundColor3 = Color3.fromRGB(30, 130, 30)
-	tpBtn.TextColor3 = Color3.new(1, 1, 1)
+	tpBtn.TextColor3       = Color3.new(1, 1, 1)
 	Instance.new("UICorner", tpBtn)
-
 	tpBtn.MouseButton1Click:Connect(TeleportToSafeZone)
 
-	UpdateCanvasSize()
+	UCS()
 end
 
 ----------------------------------------------------------------
--- REGISTER TAB
+-- REGISTER
 ----------------------------------------------------------------
 
 _G.N3onHub.Tab("Farm", "👏", 160, LoadSlapBattlesFarm)
 
-print("[Slap Battles Module] Loaded!")
-print("Features: Auto Farm (Tween + AutoClick), Hitbox Expander, Safe Zone")
+print("[Slap Battles Module] Loaded! Safe Zone criada automaticamente.")
