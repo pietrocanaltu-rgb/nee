@@ -552,50 +552,23 @@ local function CreateBubble()
 	Bubble.Font = Enum.Font.GothamBold
 	Bubble.TextScaled = true
 	Bubble.BackgroundColor3 = Color3.fromRGB(140, 0, 255)
-	Bubble.BackgroundTransparency = 1
-	Bubble.TextTransparency = 1
+	Bubble.TextColor3 = Color3.new(1, 1, 1)
+	Bubble.AutoButtonColor = false
+	Bubble.BorderSizePixel = 0
 	Instance.new("UICorner", Bubble).CornerRadius = UDim.new(1, 0)
 
+	-- tween de entrada
+	Bubble.Size = UDim2.fromOffset(0, 0)
 	TweenService:Create(Bubble, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
-		BackgroundTransparency = 0,
-		TextTransparency = 0,
+		Size = UDim2.fromOffset(60, 60)
 	}):Play()
-
-	-- arrastar
-	local dragging = false
-	local dragStart, startPos
-
-	Bubble.InputBegan:Connect(function(i)
-		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-			dragging = true
-			dragStart = i.Position
-			startPos = Bubble.Position
-		end
-	end)
-	UIS.InputChanged:Connect(function(i)
-		if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-			local delta = i.Position - dragStart
-			Bubble.Position = UDim2.new(
-				startPos.X.Scale, startPos.X.Offset + delta.X,
-				startPos.Y.Scale, startPos.Y.Offset + delta.Y
-			)
-		end
-	end)
-	UIS.InputEnded:Connect(function(i)
-		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-			dragging = false
-		end
-	end)
 
 	-- clicar pra reabrir
 	Bubble.MouseButton1Click:Connect(function()
-		if dragging then return end
-		local t = TweenService:Create(Bubble, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-			BackgroundTransparency = 1,
-			TextTransparency = 1,
-		})
-		t:Play()
-		t.Completed:Connect(function()
+		TweenService:Create(Bubble, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+			Size = UDim2.fromOffset(0, 0)
+		}):Play()
+		task.delay(0.2, function()
 			if Bubble then Bubble:Destroy(); Bubble = nil end
 			Mini = false
 			ShowHub()
