@@ -1,23 +1,16 @@
--- N3on Hub - Slap Battles Module
 -- N3on Hub - Slap Battles Module (FULL)
 
 if not _G.N3onHub then
-warn("[Slap Battles Module] Base hub not loaded! Please load the base first.")
-return
+	warn("[Slap Battles Module] Base hub not loaded! Please load the base first.")
+	return
 end
 
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
-local VIM = game:GetService("VirtualInputManager")
-local Player = Players.LocalPlayer
-local TweenService   = game:GetService("TweenService")
-local RunService     = game:GetService("RunService")
-local Players        = game:GetService("Players")
-local VIM            = game:GetService("VirtualInputManager")
+local TweenService     = game:GetService("TweenService")
+local RunService       = game:GetService("RunService")
+local Players          = game:GetService("Players")
+local VIM              = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
-local Workspace      = game:GetService("Workspace")
-local Player         = Players.LocalPlayer
+local Player           = Players.LocalPlayer
 
 print("[Slap Battles Module] Loading...")
 
@@ -25,84 +18,57 @@ print("[Slap Battles Module] Loading...")
 -- SAVED STATES
 ----------------------------------------------------------------
 
-_G.N3onHub.SavedStates.autoFarm      = false
-_G.N3onHub.SavedStates.farmSpeed     = 30
-_G.N3onHub.SavedStates.hitboxEnabled = false
-_G.N3onHub.SavedStates.hitboxSize    = 15
-_G.N3onHub.SavedStates.hitboxTrans   = 0.9
-_G.N3onHub.SavedStates.autoFarm        = false
-_G.N3onHub.SavedStates.farmSpeed       = 30
-_G.N3onHub.SavedStates.farmDistance    = 15      -- Y offset abaixo do alvo
-_G.N3onHub.SavedStates.farmRange       = 100     -- distância máxima pra considerar alvo
-_G.N3onHub.SavedStates.hitboxEnabled   = false
-_G.N3onHub.SavedStates.hitboxSize      = 15
-_G.N3onHub.SavedStates.hitboxTrans     = 0.9
-_G.N3onHub.SavedStates.auraEnabled     = false
-_G.N3onHub.SavedStates.auraSize        = 20
-_G.N3onHub.SavedStates.espEnabled      = false
-_G.N3onHub.SavedStates.espBoxEnabled   = false
-_G.N3onHub.SavedStates.espNameEnabled  = false
-_G.N3onHub.SavedStates.espDistEnabled  = false
-_G.N3onHub.SavedStates.antiKnockback   = false
-_G.N3onHub.SavedStates.flingEnabled    = false
-_G.N3onHub.SavedStates.flingPower      = 500
-_G.N3onHub.SavedStates.noclipEnabled   = false
-_G.N3onHub.SavedStates.speedEnabled    = false
-_G.N3onHub.SavedStates.speedValue      = 16
-_G.N3onHub.SavedStates.jumpEnabled     = false
-_G.N3onHub.SavedStates.jumpValue       = 50
-_G.N3onHub.SavedStates.infiniteJump    = false
-_G.N3onHub.SavedStates.ghostEnabled    = false
-_G.N3onHub.SavedStates.autoRespawn     = false
-_G.N3onHub.SavedStates.clickTpEnabled  = false
+_G.N3onHub.SavedStates.autoFarm       = false
+_G.N3onHub.SavedStates.farmSpeed      = 30
+_G.N3onHub.SavedStates.farmDistance   = 15
+_G.N3onHub.SavedStates.farmRange      = 100
+_G.N3onHub.SavedStates.auraEnabled    = false
+_G.N3onHub.SavedStates.auraSize       = 20
+_G.N3onHub.SavedStates.espEnabled     = false
+_G.N3onHub.SavedStates.espBoxEnabled  = false
+_G.N3onHub.SavedStates.espNameEnabled = false
+_G.N3onHub.SavedStates.espDistEnabled = false
+_G.N3onHub.SavedStates.antiKnockback  = false
+_G.N3onHub.SavedStates.flingEnabled   = false
+_G.N3onHub.SavedStates.flingPower     = 500
+_G.N3onHub.SavedStates.autoRespawn    = false
+_G.N3onHub.SavedStates.clickTpEnabled = false
 
-local autoFarmActive  = false
-local hitboxActive    = false
-local activeTween     = nil
-local hitboxConn      = nil
 ----------------------------------------------------------------
 -- LOCAL FLAGS
 ----------------------------------------------------------------
 
-local autoFarmActive   = false
-local hitboxActive     = false
-local auraActive       = false
-local espActive        = false
-local antiKnockActive  = false
-local flingActive      = false
-local noclipActive     = false
-local speedActive      = false
-local jumpActive       = false
-local infJumpActive    = false
-local ghostActive      = false
-local autoRespawnActive= false
-local clickTpActive    = false
+local autoFarmActive    = false
+local auraActive        = false
+local espActive         = false
+local antiKnockActive   = false
+local flingActive       = false
+local autoRespawnActive = false
+local clickTpActive     = false
 
-local activeTween      = nil
-local espObjects       = {}
-local auraObjects      = {}
+local activeTween = nil
+local espObjects  = {}
+local clickTpConn = nil
 
 ----------------------------------------------------------------
 -- UTILITY
-@@ -42,33 +81,37 @@ local function GetHum()
-return c and c:FindFirstChild("Humanoid")
+----------------------------------------------------------------
+
+local function GetHRP()
+	local c = Player.Character
+	return c and c:FindFirstChild("HumanoidRootPart")
 end
 
-local function GetChar()
-	return Player.Character
+local function GetHum()
+	local c = Player.Character
+	return c and c:FindFirstChild("Humanoid")
 end
 
 ----------------------------------------------------------------
--- SAFE ZONE (CRIADA AUTOMATICAMENTE AO CARREGAR)
+-- SAFE ZONE
 ----------------------------------------------------------------
 
 local safeZone = Instance.new("Part")
-safeZone.Name        = "N3onSafeZone"
-safeZone.Size        = Vector3.new(30, 1, 30)
-safeZone.Anchored    = true
-safeZone.CanCollide  = true
-safeZone.BrickColor  = BrickColor.new("Bright green")
-safeZone.Material    = Enum.Material.SmoothPlastic
 safeZone.Name         = "N3onSafeZone"
 safeZone.Size         = Vector3.new(30, 1, 30)
 safeZone.Anchored     = true
@@ -110,153 +76,83 @@ safeZone.CanCollide   = true
 safeZone.BrickColor   = BrickColor.new("Bright green")
 safeZone.Material     = Enum.Material.SmoothPlastic
 safeZone.Transparency = 0.4
-safeZone.CFrame      = CFrame.new(0, 500, 99999)
-safeZone.Parent      = workspace
 safeZone.CFrame       = CFrame.new(0, 500, 99999)
 safeZone.Parent       = workspace
 
 local bb = Instance.new("BillboardGui", safeZone)
-bb.Size         = UDim2.fromOffset(200, 40)
-bb.StudsOffset  = Vector3.new(0, 4, 0)
-bb.AlwaysOnTop  = true
-bb.Size        = UDim2.fromOffset(200, 40)
+bb.Size = UDim2.fromOffset(200, 40)
 bb.StudsOffset = Vector3.new(0, 4, 0)
 bb.AlwaysOnTop = true
-
 local bbLabel = Instance.new("TextLabel", bb)
-bbLabel.Size                 = UDim2.new(1, 0, 1, 0)
-bbLabel.Size                   = UDim2.new(1, 0, 1, 0)
+bbLabel.Size = UDim2.new(1, 0, 1, 0)
 bbLabel.BackgroundTransparency = 1
-bbLabel.Text                 = "🟢 SAFE ZONE"
-bbLabel.Font                 = Enum.Font.GothamBold
-bbLabel.TextSize             = 18
-bbLabel.TextColor3           = Color3.new(0, 1, 0)
-bbLabel.Text                   = "🟢 SAFE ZONE"
-bbLabel.Font                   = Enum.Font.GothamBold
-bbLabel.TextSize               = 18
-bbLabel.TextColor3             = Color3.new(0, 1, 0)
+bbLabel.Text = "🟢 SAFE ZONE"
+bbLabel.Font = Enum.Font.GothamBold
+bbLabel.TextSize = 18
+bbLabel.TextColor3 = Color3.new(0, 1, 0)
 bbLabel.TextStrokeTransparency = 0.3
 
 local function TeleportToSafeZone()
-@@ -79,40 +122,345 @@ local function TeleportToSafeZone()
+	local hrp = GetHRP()
+	if hrp then hrp.CFrame = safeZone.CFrame + Vector3.new(0, 4, 0) end
 end
-
-----------------------------------------------------------------
--- HITBOX EXPANDER (IGUAL AO SCRIPT REFERÊNCIA)
--- HITBOX EXPANDER
-----------------------------------------------------------------
-
-RunService.RenderStepped:Connect(function()
-	for _, v in next, Players:GetPlayers() do
-		if v.Name ~= Player.Name then
-			pcall(function()
-				local hrp = v.Character.HumanoidRootPart
-				if hitboxActive then
-					hrp.Size         = Vector3.new(_G.N3onHub.SavedStates.hitboxSize, _G.N3onHub.SavedStates.hitboxSize, _G.N3onHub.SavedStates.hitboxSize)
-					hrp.Transparency = _G.N3onHub.SavedStates.hitboxTrans
-					hrp.BrickColor   = BrickColor.new("Really black")
-					hrp.Material     = "Neon"
-					hrp.CanCollide   = false
-				else
-					hrp.Size         = Vector3.new(2, 2, 1)
-					hrp.Transparency = 1
-					hrp.BrickColor   = BrickColor.new("Medium stone grey")
-					hrp.Material     = "Plastic"
-					hrp.CanCollide   = false
-				end
-			end)
-		end
-	end
-end)
 
 ----------------------------------------------------------------
 -- ESP
 ----------------------------------------------------------------
 
--- RenderStepped sempre rodando, checa hitboxActive igual o original checa HitboxStatus
-local function CreateESPBox(plr)
+local function CreateESP(plr)
 	if espObjects[plr.Name] then return end
-
-	local folder = Instance.new("Folder")
-	folder.Name = "ESP_" .. plr.Name
-	folder.Parent = workspace
-
 	local highlight = Instance.new("Highlight")
-	highlight.Name          = "ESPHighlight"
-	highlight.FillColor     = Color3.fromRGB(255, 0, 0)
-	highlight.OutlineColor  = Color3.fromRGB(255, 255, 255)
-	highlight.FillTransparency   = 0.5
+	highlight.FillColor = Color3.fromRGB(255, 0, 0)
+	highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+	highlight.FillTransparency = 0.5
 	highlight.OutlineTransparency = 0
 
 	local billboard = Instance.new("BillboardGui")
-	billboard.Name        = "ESPBillboard"
-	billboard.Size        = UDim2.fromOffset(150, 50)
+	billboard.Size = UDim2.fromOffset(150, 50)
 	billboard.StudsOffset = Vector3.new(0, 3, 0)
 	billboard.AlwaysOnTop = true
 
 	local nameLabel = Instance.new("TextLabel", billboard)
-	nameLabel.Name                   = "NameLabel"
-	nameLabel.Size                   = UDim2.new(1, 0, 0.5, 0)
+	nameLabel.Name = "NameLabel"
+	nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
 	nameLabel.BackgroundTransparency = 1
-	nameLabel.Font                   = Enum.Font.GothamBold
-	nameLabel.TextSize               = 14
-	nameLabel.TextColor3             = Color3.fromRGB(255, 80, 80)
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.TextSize = 14
+	nameLabel.TextColor3 = Color3.fromRGB(255, 80, 80)
 	nameLabel.TextStrokeTransparency = 0
-	nameLabel.Text                   = plr.Name
+	nameLabel.Text = plr.Name
 
 	local distLabel = Instance.new("TextLabel", billboard)
-	distLabel.Name                   = "DistLabel"
-	distLabel.Size                   = UDim2.new(1, 0, 0.5, 0)
-	distLabel.Position               = UDim2.new(0, 0, 0.5, 0)
+	distLabel.Name = "DistLabel"
+	distLabel.Size = UDim2.new(1, 0, 0.5, 0)
+	distLabel.Position = UDim2.new(0, 0, 0.5, 0)
 	distLabel.BackgroundTransparency = 1
-	distLabel.Font                   = Enum.Font.Gotham
-	distLabel.TextSize               = 12
-	distLabel.TextColor3             = Color3.fromRGB(255, 255, 100)
+	distLabel.Font = Enum.Font.Gotham
+	distLabel.TextSize = 12
+	distLabel.TextColor3 = Color3.fromRGB(255, 255, 100)
 	distLabel.TextStrokeTransparency = 0
-	distLabel.Text                   = "..."
+	distLabel.Text = "..."
 
-	espObjects[plr.Name] = {
-		folder    = folder,
-		highlight = highlight,
-		billboard = billboard,
-		nameLabel = nameLabel,
-		distLabel = distLabel,
-	}
+	espObjects[plr.Name] = {highlight = highlight, billboard = billboard, nameLabel = nameLabel, distLabel = distLabel}
 end
 
-local function RemoveESP(plrName)
-	if espObjects[plrName] then
-		pcall(function() espObjects[plrName].folder:Destroy() end)
-		pcall(function() espObjects[plrName].highlight:Destroy() end)
-		pcall(function() espObjects[plrName].billboard:Destroy() end)
-		espObjects[plrName] = nil
+local function RemoveESP(name)
+	if espObjects[name] then
+		pcall(function() espObjects[name].highlight:Destroy() end)
+		pcall(function() espObjects[name].billboard:Destroy() end)
+		espObjects[name] = nil
 	end
 end
 
 local function ClearAllESP()
-	for name, _ in pairs(espObjects) do
-		RemoveESP(name)
-	end
+	for name in pairs(espObjects) do RemoveESP(name) end
 end
 
 RunService.RenderStepped:Connect(function()
-	if hitboxActive then
-		for i, v in next, Players:GetPlayers() do
-			if v.Name ~= Player.Name then
-				pcall(function()
-					v.Character.HumanoidRootPart.Size = Vector3.new(_G.N3onHub.SavedStates.hitboxSize, _G.N3onHub.SavedStates.hitboxSize, _G.N3onHub.SavedStates.hitboxSize)
-					v.Character.HumanoidRootPart.Transparency = _G.N3onHub.SavedStates.hitboxTrans
-					v.Character.HumanoidRootPart.BrickColor = BrickColor.new("Really black")
-					v.Character.HumanoidRootPart.Material = "Neon"
-					v.Character.HumanoidRootPart.CanCollide = false
-				end)
-	if not espActive then
-		ClearAllESP()
-		return
-	end
-
+	if not espActive then ClearAllESP() return end
 	local hrp = GetHRP()
-
 	for _, plr in pairs(Players:GetPlayers()) do
 		if plr == Player then continue end
 		pcall(function()
@@ -264,76 +160,48 @@ RunService.RenderStepped:Connect(function()
 			if not char then RemoveESP(plr.Name) return end
 			local tHRP = char:FindFirstChild("HumanoidRootPart")
 			if not tHRP then RemoveESP(plr.Name) return end
-
-			if not espObjects[plr.Name] then
-				CreateESPBox(plr)
-			end
-
+			if not espObjects[plr.Name] then CreateESP(plr) end
 			local obj = espObjects[plr.Name]
 
-			-- Highlight (box)
 			if _G.N3onHub.SavedStates.espBoxEnabled then
 				obj.highlight.Adornee = char
-				obj.highlight.Parent  = char
+				obj.highlight.Parent = char
 			else
 				obj.highlight.Parent = nil
 			end
 
-			-- Billboard
 			obj.billboard.Adornee = tHRP
-			obj.billboard.Parent  = tHRP
-
-			-- Name
+			obj.billboard.Parent = tHRP
 			obj.nameLabel.Visible = _G.N3onHub.SavedStates.espNameEnabled
-			obj.nameLabel.Text    = plr.Name
-
-			-- Distance
+			obj.nameLabel.Text = plr.Name
 			obj.distLabel.Visible = _G.N3onHub.SavedStates.espDistEnabled
 			if hrp then
-				local dist = math.floor((hrp.Position - tHRP.Position).Magnitude)
-				obj.distLabel.Text = dist .. " studs"
-end
+				obj.distLabel.Text = math.floor((hrp.Position - tHRP.Position).Magnitude) .. " studs"
+			end
 		end)
 	end
-
-	-- Limpa jogadores que saíram
-	for name, _ in pairs(espObjects) do
-		if not Players:FindFirstChild(name) then
-			RemoveESP(name)
-end
-	else
-		for i, v in next, Players:GetPlayers() do
-			if v.Name ~= Player.Name then
-				pcall(function()
-					v.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1)
-					v.Character.HumanoidRootPart.Transparency = 1
-					v.Character.HumanoidRootPart.BrickColor = BrickColor.new("Medium stone grey")
-					v.Character.HumanoidRootPart.Material = "Plastic"
-					v.Character.HumanoidRootPart.CanCollide = false
-				end)
+	for name in pairs(espObjects) do
+		if not Players:FindFirstChild(name) then RemoveESP(name) end
 	end
 end)
 
 ----------------------------------------------------------------
--- AURA (KILL AURA)
+-- KILL AURA
 ----------------------------------------------------------------
 
 RunService.Heartbeat:Connect(function()
 	if not auraActive then return end
 	local hrp = GetHRP()
 	if not hrp then return end
-
 	for _, plr in pairs(Players:GetPlayers()) do
 		if plr == Player then continue end
 		pcall(function()
 			local tHRP = plr.Character.HumanoidRootPart
-			local dist = (hrp.Position - tHRP.Position).Magnitude
-			if dist <= _G.N3onHub.SavedStates.auraSize then
-				-- simula clique na direção do alvo
-				VIM:SendMouseButtonEvent(0, 0, 0, true,  game, 1)
+			if (hrp.Position - tHRP.Position).Magnitude <= _G.N3onHub.SavedStates.auraSize then
+				VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
 				task.wait(0.01)
 				VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-end
+			end
 		end)
 	end
 end)
@@ -346,32 +214,14 @@ RunService.Heartbeat:Connect(function()
 	if not antiKnockActive then return end
 	local hrp = GetHRP()
 	if not hrp then return end
-	pcall(function()
-		hrp.Velocity = Vector3.new(0, hrp.Velocity.Y, 0)
-	end)
+	pcall(function() hrp.Velocity = Vector3.new(0, hrp.Velocity.Y, 0) end)
 end)
 
 ----------------------------------------------------------------
--- FLING (CLICA NO MAIS PRÓXIMO COM FORÇA EXTRA)
+-- FLING
 ----------------------------------------------------------------
 
-local function FlingTarget(target)
-	if not target or not target.Character then return end
-	local hrp  = GetHRP()
-	local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
-	if not hrp or not tHRP then return end
-
-	pcall(function()
-		local bv = Instance.new("BodyVelocity")
-		bv.Velocity      = (tHRP.Position - hrp.Position).Unit * _G.N3onHub.SavedStates.flingPower
-		bv.MaxForce      = Vector3.new(1e9, 1e9, 1e9)
-		bv.P             = 1e9
-		bv.Parent        = tHRP
-		task.delay(0.1, function() bv:Destroy() end)
-	end)
-end
-
-local function GetClosestFling()
+local function GetClosestPlayer()
 	local hrp = GetHRP()
 	if not hrp then return nil end
 	local closest, best = nil, math.huge
@@ -386,80 +236,25 @@ local function GetClosestFling()
 	return closest
 end
 
+local function FlingTarget(target)
+	if not target or not target.Character then return end
+	local hrp = GetHRP()
+	local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
+	if not hrp or not tHRP then return end
+	pcall(function()
+		local bv = Instance.new("BodyVelocity")
+		bv.Velocity = (tHRP.Position - hrp.Position).Unit * _G.N3onHub.SavedStates.flingPower
+		bv.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+		bv.P = 1e9
+		bv.Parent = tHRP
+		task.delay(0.1, function() bv:Destroy() end)
+	end)
+end
+
 RunService.Heartbeat:Connect(function()
 	if not flingActive then return end
-	local target = GetClosestFling()
+	local target = GetClosestPlayer()
 	if target then FlingTarget(target) end
-end)
-
-----------------------------------------------------------------
--- NOCLIP
-----------------------------------------------------------------
-
-RunService.Stepped:Connect(function()
-	if not noclipActive then return end
-	local char = GetChar()
-	if not char then return end
-	for _, part in pairs(char:GetDescendants()) do
-		if part:IsA("BasePart") and part.CanCollide then
-			part.CanCollide = false
-end
-end
-end)
-
-local function StartHitbox() hitboxActive = true end
-local function StopHitbox()  hitboxActive = false end
-----------------------------------------------------------------
--- SPEED
-----------------------------------------------------------------
-
-RunService.Heartbeat:Connect(function()
-	local hum = GetHum()
-	if not hum then return end
-	if speedActive then
-		hum.WalkSpeed = _G.N3onHub.SavedStates.speedValue
-	else
-		if hum.WalkSpeed ~= 16 then hum.WalkSpeed = 16 end
-	end
-end)
-
-----------------------------------------------------------------
--- JUMP POWER
-----------------------------------------------------------------
-
-RunService.Heartbeat:Connect(function()
-	local hum = GetHum()
-	if not hum then return end
-	if jumpActive then
-		hum.JumpPower = _G.N3onHub.SavedStates.jumpValue
-	else
-		if hum.JumpPower ~= 50 then hum.JumpPower = 50 end
-	end
-end)
-
-----------------------------------------------------------------
--- INFINITE JUMP
-----------------------------------------------------------------
-
-UserInputService.JumpRequest:Connect(function()
-	if not infJumpActive then return end
-	local hum = GetHum()
-	if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
-end)
-
-----------------------------------------------------------------
--- GHOST MODE (invisível pra outros)
-----------------------------------------------------------------
-
-RunService.Heartbeat:Connect(function()
-	if not ghostActive then return end
-	local char = GetChar()
-	if not char then return end
-	for _, part in pairs(char:GetDescendants()) do
-		if part:IsA("BasePart") then
-			pcall(function() part.LocalTransparencyModifier = 1 end)
-		end
-	end
 end)
 
 ----------------------------------------------------------------
@@ -476,10 +271,8 @@ RunService.Heartbeat:Connect(function()
 end)
 
 ----------------------------------------------------------------
--- CLICK TP (teleporta pro cursor)
+-- CLICK TP
 ----------------------------------------------------------------
-
-local clickTpConn = nil
 
 local function EnableClickTP()
 	if clickTpConn then clickTpConn:Disconnect() end
@@ -488,115 +281,312 @@ local function EnableClickTP()
 		if input.UserInputType == Enum.UserInputType.MouseButton1 then
 			local hrp = GetHRP()
 			if not hrp then return end
-			local unitRay = workspace.CurrentCamera:ScreenPointToRay(
-				input.Position.X, input.Position.Y
-			)
+			local unitRay = workspace.CurrentCamera:ScreenPointToRay(input.Position.X, input.Position.Y)
 			local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 1000)
-			if result then
-				hrp.CFrame = CFrame.new(result.Position + Vector3.new(0, 3, 0))
-			end
+			if result then hrp.CFrame = CFrame.new(result.Position + Vector3.new(0, 3, 0)) end
 		end
 	end)
 end
 
 local function DisableClickTP()
-	if clickTpConn then
-		clickTpConn:Disconnect()
-		clickTpConn = nil
+	if clickTpConn then clickTpConn:Disconnect(); clickTpConn = nil end
+end
+
+----------------------------------------------------------------
+-- AUTO CLICK + AUTO FARM
+----------------------------------------------------------------
+
+local function Click()
+	VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+	task.wait(0.01)
+	VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+end
+
+-- Verifica se uma posição está dentro do bounding box do Lobby
+local function IsInsideLobby(pos)
+	local lobby = workspace:FindFirstChild("Lobby")
+	if not lobby then return false end
+
+	-- Tenta usar PrimaryPart, senão procura qualquer BasePart como referência
+	local ref = lobby.PrimaryPart
+	if not ref then
+		for _, v in pairs(lobby:GetDescendants()) do
+			if v:IsA("BasePart") then ref = v break end
+		end
 	end
+	if not ref then return false end
+
+	-- Calcula o bounding box do modelo inteiro
+	local ok, bbCF, bbSize = pcall(function()
+		return lobby:GetBoundingBox()
+	end)
+	if not ok then return false end
+
+	-- Transforma a posição para o espaço local do bounding box
+	local localPos = bbCF:PointToObjectSpace(pos)
+	local half = bbSize / 2
+
+	return math.abs(localPos.X) <= half.X
+		and math.abs(localPos.Y) <= half.Y
+		and math.abs(localPos.Z) <= half.Z
 end
 
-----------------------------------------------------------------
--- AUTO CLICK
-@@ -125,25 +473,24 @@ local function Click()
+-- Pega o ponto do Teleport1 dentro do Lobby
+local function GetLobbyTeleport()
+	local lobby = workspace:FindFirstChild("Lobby")
+	if not lobby then return nil end
+	local tp = lobby:FindFirstChild("Teleport1")
+	if not tp then return nil end
+	-- aceita BasePart ou Model
+	if tp:IsA("BasePart") then
+		return tp.Position + Vector3.new(0, 3, 0)
+	elseif tp:IsA("Model") then
+		if tp.PrimaryPart then
+			return tp.PrimaryPart.Position + Vector3.new(0, 3, 0)
+		else
+			for _, v in pairs(tp:GetDescendants()) do
+				if v:IsA("BasePart") then
+					return v.Position + Vector3.new(0, 3, 0)
+				end
+			end
+		end
+	end
+	return nil
 end
 
-----------------------------------------------------------------
--- AUTO FARM (TWEEN Y-15 + AUTO CLICK)
--- AUTO FARM
-----------------------------------------------------------------
+-- Tools perigosas — ignora quem tiver qualquer uma delas (case insensitive)
+local DANGEROUS_TOOLS = {"overkill", "error", "the flex"}
 
-local function GetClosest()
-local hrp = GetHRP()
-if not hrp then return nil end
+local function HasDangerousTool(plr)
+	local function checkName(name)
+		local lower = name:lower()
+		for _, t in ipairs(DANGEROUS_TOOLS) do
+			if lower == t then return true end
+		end
+		return false
+	end
+	-- verifica no Character (tool equipada)
+	if plr.Character then
+		for _, obj in pairs(plr.Character:GetChildren()) do
+			if obj:IsA("Tool") and checkName(obj.Name) then return true end
+		end
+	end
+	-- verifica na Backpack
+	local bp = plr:FindFirstChild("Backpack")
+	if bp then
+		for _, obj in pairs(bp:GetChildren()) do
+			if obj:IsA("Tool") and checkName(obj.Name) then return true end
+		end
+	end
+	return false
+end
 
-local closest, best = nil, math.huge
+local function GetClosestInRange()
+	local hrp = GetHRP()
+	if not hrp then return nil end
+	local closest, best = nil, math.huge
 	local range = _G.N3onHub.SavedStates.farmRange
 
-for _, plr in pairs(Players:GetPlayers()) do
-if plr == Player then continue end
-
-pcall(function()
-local tHRP = plr.Character.HumanoidRootPart
-local tHum = plr.Character.Humanoid
-
-if tHum.Health > 0 then
-local d = (hrp.Position - tHRP.Position).Magnitude
-				if d < best then
-				if d < best and d <= range then
-closest = plr
-best    = d
+	for _, plr in pairs(Players:GetPlayers()) do
+		if plr == Player then continue end
+		pcall(function()
+			local tHRP = plr.Character.HumanoidRootPart
+			local tHum = plr.Character.Humanoid
+			-- ignora players dentro do Lobby
+			if IsInsideLobby(tHRP.Position) then return end
+			-- ignora players com tools perigosas
+			if HasDangerousTool(plr) then return end
+			if tHum.Health > 0 then
+				local d = (hrp.Position - tHRP.Position).Magnitude
+				if d < best and d <= range then closest = plr; best = d end
+			end
+		end)
+	end
+	return closest
 end
-@@ -161,7 +508,8 @@ local function TweenTo(target)
-local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
-if not tHRP then return end
 
-	local goalPos = tHRP.Position + Vector3.new(0, -15, 0)
-	local yOffset = _G.N3onHub.SavedStates.farmDistance
-	local goalPos = tHRP.Position + Vector3.new(0, -yOffset, 0)
-local dist    = (hrp.Position - goalPos).Magnitude
-local dur     = math.max(dist / (_G.N3onHub.SavedStates.farmSpeed * 10), 0.05)
+-- Tween contínuo: recria o tween sempre apontando pra posição atual do alvo
+-- lookAtGetter: função opcional que retorna a posição pra olhar
+local farmConn = nil
 
-@@ -188,7 +536,6 @@ local function AutoFarmLoop()
+local function StartContinuousTween(goalGetter, lookAtGetter)
+	if activeTween then activeTween:Cancel(); activeTween = nil end
+	if farmConn then farmConn:Disconnect(); farmConn = nil end
 
-if target then
-TweenTo(target)
+	farmConn = RunService.Heartbeat:Connect(function()
+		if not autoFarmActive then
+			if activeTween then activeTween:Cancel(); activeTween = nil end
+			farmConn:Disconnect(); farmConn = nil
+			return
+		end
 
-local t0 = tick()
-while autoFarmActive and tick() - t0 < 0.8 do
-Click()
-@@ -202,16 +549,16 @@ local function AutoFarmLoop()
+		local hrp = GetHRP()
+		if not hrp then return end
+
+		local goalPos = goalGetter()
+		if not goalPos then return end
+
+		-- Olha pro alvo enquanto se move
+		if lookAtGetter then
+			local lookPos = lookAtGetter()
+			if lookPos then
+				local dir = (lookPos - hrp.Position) * Vector3.new(1, 0, 1) -- só no plano horizontal
+				if dir.Magnitude > 0.1 then
+					hrp.CFrame = CFrame.new(hrp.Position, hrp.Position + dir) * CFrame.Angles(0, 0, 0)
+				end
+			end
+		end
+
+		-- Só recria o tween se não tiver um rodando
+		if not activeTween or activeTween.PlaybackState ~= Enum.PlaybackState.Playing then
+			local dist = (hrp.Position - goalPos).Magnitude
+			local dur = math.max(dist / (_G.N3onHub.SavedStates.farmSpeed * 10), 0.05)
+			activeTween = TweenService:Create(
+				hrp,
+				TweenInfo.new(dur, Enum.EasingStyle.Linear),
+				{CFrame = CFrame.new(goalPos)}
+			)
+			activeTween:Play()
+		end
+	end)
+end
+
+local function StopContinuousTween()
+	if farmConn then farmConn:Disconnect(); farmConn = nil end
+	if activeTween then activeTween:Cancel(); activeTween = nil end
+end
+
+local function AutoFarmLoop()
+	local farmTimer  = tick()  -- conta os 3s ativos
+	local onPause    = false
+
+	while autoFarmActive do
+		-- a cada 3s de farm, pausa por 3s (para tudo e ancora o HRP)
+		if not onPause and tick() - farmTimer >= 3 then
+			onPause = true
+			StopContinuousTween()
+
+			-- ancora o HRP pra ficar parado no lugar
+			local hrpPause = GetHRP()
+			if hrpPause then hrpPause.Anchored = true end
+
+			task.wait(3)
+
+			-- desancora antes de continuar
+			local hrpResume = GetHRP()
+			if hrpResume then hrpResume.Anchored = false end
+
+			onPause   = false
+			farmTimer = tick()
+			continue
+		end
+
+		local hrp = GetHRP()
+		local hum = GetHum()
+		if not hrp or not hum or hum.Health <= 0 then
+			StopContinuousTween()
+			task.wait(0.5)
+			continue
+		end
+
+		-- Verifica se EU estou no Lobby → vai pro Teleport1
+		if IsInsideLobby(hrp.Position) then
+			local tpPos = GetLobbyTeleport()
+			if tpPos then
+				local distToTp = (hrp.Position - tpPos).Magnitude
+				if distToTp > 5 then
+					-- ainda longe do portal, vai até ele sem olhar pra ninguém
+					StartContinuousTween(function() return tpPos end, nil)
+					task.wait(0.2)
+				else
+					-- chegou no portal! para tudo, espera 3s SEM ancorar e continua
+					StopContinuousTween()
+					task.wait(3)
+					farmTimer = tick() -- reseta o timer pra não pausar logo depois
+				end
+			else
+				StopContinuousTween()
+				task.wait(0.2)
+			end
+			continue
+		end
+
+		-- Fora do lobby → persegue o player mais próximo
+		local target = GetClosestInRange()
+		if target and target.Character then
+			local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
+			if tHRP then
+				-- passa o goalGetter E o lookAtGetter (posição do rosto/HRP do alvo)
+				StartContinuousTween(
+					function()
+						local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+						if t then return t.Position + Vector3.new(0, -_G.N3onHub.SavedStates.farmDistance, 0) end
+						return nil
+					end,
+					function()
+						local t = target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+						if t then return t.Position end
+						return nil
+					end
+				)
+				local t0 = tick()
+				while autoFarmActive and tick() - t0 < 0.5 do
+					Click()
+					task.wait(0.05)
+				end
+				continue
+			end
+		end
+
+		-- Sem alvo → só clica
+		StopContinuousTween()
+		Click()
+		task.wait(0.1)
+	end
+
+	StopContinuousTween()
 end
 
 ----------------------------------------------------------------
--- GUI TAB
--- GUI TABS
+-- TAB: FARM
 ----------------------------------------------------------------
-
-local function LoadSlapBattlesFarm()
-	_G.N3onHub.GUI.Clear()
--- ======================== TAB: FARM ========================
 
 local function LoadFarmTab()
 	_G.N3onHub.GUI.Clear()
-local SC  = _G.N3onHub.GUI.ScrollContent
-local UCS = _G.N3onHub.GUI.UpdateCanvasSize
+	local SC  = _G.N3onHub.GUI.ScrollContent
+	local UCS = _G.N3onHub.GUI.UpdateCanvasSize
 
-	-- Título
-local title = Instance.new("TextLabel", SC)
-title.Size               = UDim2.new(1, 0, 0, 40)
-title.BackgroundTransparency = 1
-@@ -223,7 +570,7 @@ local function LoadSlapBattlesFarm()
-local info = Instance.new("TextLabel", SC)
-info.Size                = UDim2.new(1, 0, 0, 50)
-info.BackgroundTransparency = 1
-	info.Text                = "Tween vai Y-15 abaixo dos players.\nAuto Click bate automaticamente."
-	info.Text                = "Tween vai abaixo dos players.\nAuto Click bate automaticamente."
-info.Font                = Enum.Font.Gotham
-info.TextScaled          = true
-info.TextColor3          = Color3.fromRGB(180, 180, 180)
-@@ -246,14 +593,22 @@ local function LoadSlapBattlesFarm()
-if v then
-spawn(AutoFarmLoop)
-else
-			if activeTween then activeTween:Cancel() activeTween = nil end
+	local title = Instance.new("TextLabel", SC)
+	title.Size = UDim2.new(1, 0, 0, 40)
+	title.BackgroundTransparency = 1
+	title.Text = "👏 Farm - Slap Battles"
+	title.Font = Enum.Font.GothamBold
+	title.TextScaled = true
+	title.TextColor3 = Color3.fromRGB(255, 200, 100)
+
+	-- AUTO FARM
+	local lFarm = Instance.new("TextLabel", SC)
+	lFarm.Size = UDim2.new(1, 0, 0, 28)
+	lFarm.BackgroundTransparency = 1
+	lFarm.Text = "⚡ Auto Farm"
+	lFarm.Font = Enum.Font.GothamBold
+	lFarm.TextSize = 15
+	lFarm.TextColor3 = Color3.fromRGB(255, 200, 100)
+	lFarm.TextXAlignment = Enum.TextXAlignment.Left
+
+	_G.N3onHub.Checkbox("Auto Farm (Tween + Click)", _G.N3onHub.SavedStates.autoFarm, function(v)
+		_G.N3onHub.SavedStates.autoFarm = v
+		autoFarmActive = v
+		if v then
+			spawn(AutoFarmLoop)
+		else
 			if activeTween then activeTween:Cancel(); activeTween = nil end
-end
-end)
+		end
+	end)
 
-_G.N3onHub.Slider("Tween Speed", 5, 100, _G.N3onHub.SavedStates.farmSpeed, function(v)
-_G.N3onHub.SavedStates.farmSpeed = v
-end)
+	_G.N3onHub.Slider("Tween Speed", 5, 100, _G.N3onHub.SavedStates.farmSpeed, function(v)
+		_G.N3onHub.SavedStates.farmSpeed = v
+	end)
 
 	_G.N3onHub.Slider("Farm Distance (Y offset)", 0, 50, _G.N3onHub.SavedStates.farmDistance, function(v)
 		_G.N3onHub.SavedStates.farmDistance = v
@@ -606,34 +596,50 @@ end)
 		_G.N3onHub.SavedStates.farmRange = v
 	end)
 
--- HITBOX EXPANDER
-local lHitbox = Instance.new("TextLabel", SC)
-lHitbox.Size               = UDim2.new(1, 0, 0, 28)
-@@ -267,18 +622,255 @@ local function LoadSlapBattlesFarm()
-_G.N3onHub.Checkbox("Enable Hitbox", _G.N3onHub.SavedStates.hitboxEnabled, function(v)
-_G.N3onHub.SavedStates.hitboxEnabled = v
-hitboxActive = v
-		if v then StartHitbox() else StopHitbox() end
-end)
+	-- HITBOX via loadstring
+	local lHitbox = Instance.new("TextLabel", SC)
+	lHitbox.Size = UDim2.new(1, 0, 0, 28)
+	lHitbox.BackgroundTransparency = 1
+	lHitbox.Text = "🎯 Hitbox Expander"
+	lHitbox.Font = Enum.Font.GothamBold
+	lHitbox.TextSize = 15
+	lHitbox.TextColor3 = Color3.fromRGB(255, 100, 100)
+	lHitbox.TextXAlignment = Enum.TextXAlignment.Left
 
-_G.N3onHub.Slider("Hitbox Size", 5, 60, _G.N3onHub.SavedStates.hitboxSize, function(v)
-_G.N3onHub.SavedStates.hitboxSize = v
-end)
+	local hitboxLoaded = false
+	local hitboxBtn = Instance.new("TextButton", SC)
+	hitboxBtn.Size = UDim2.new(1, 0, 0, 40)
+	hitboxBtn.Text = "🎯 Carregar Hitbox Expander"
+	hitboxBtn.Font = Enum.Font.GothamBold
+	hitboxBtn.TextSize = 14
+	hitboxBtn.BackgroundColor3 = Color3.fromRGB(120, 30, 30)
+	hitboxBtn.TextColor3 = Color3.new(1, 1, 1)
+	hitboxBtn.AutoButtonColor = false
+	Instance.new("UICorner", hitboxBtn)
 
-	-- Transparency slider: 1-10 mapeado para 0.1-1.0
-_G.N3onHub.Slider("Hitbox Transparency (x10)", 1, 10, math.floor(_G.N3onHub.SavedStates.hitboxTrans * 10), function(v)
-_G.N3onHub.SavedStates.hitboxTrans = v / 10
-end)
+	hitboxBtn.MouseButton1Click:Connect(function()
+		if hitboxLoaded then return end
+		hitboxLoaded = true
+		hitboxBtn.Text = "⏳ Carregando..."
+		hitboxBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 30)
+		task.spawn(function()
+			pcall(function()
+				loadstring(game:HttpGet("https://gist.githubusercontent.com/stellar-4242/430ef3087d8d87eb306ca03e728ffbb8/raw/798429dd908b1f4471a1fa569ff62c5e5a93ec61/SLAP.LUA"))()
+			end)
+			hitboxBtn.Text = "✅ Hitbox Carregado!"
+			hitboxBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
+		end)
+	end)
 
 	-- KILL AURA
 	local lAura = Instance.new("TextLabel", SC)
-	lAura.Size               = UDim2.new(1, 0, 0, 28)
+	lAura.Size = UDim2.new(1, 0, 0, 28)
 	lAura.BackgroundTransparency = 1
-	lAura.Text               = "💥 Kill Aura"
-	lAura.Font               = Enum.Font.GothamBold
-	lAura.TextSize           = 15
-	lAura.TextColor3         = Color3.fromRGB(255, 80, 80)
-	lAura.TextXAlignment     = Enum.TextXAlignment.Left
+	lAura.Text = "💥 Kill Aura"
+	lAura.Font = Enum.Font.GothamBold
+	lAura.TextSize = 15
+	lAura.TextColor3 = Color3.fromRGB(255, 80, 80)
+	lAura.TextXAlignment = Enum.TextXAlignment.Left
 
 	_G.N3onHub.Checkbox("Kill Aura", _G.N3onHub.SavedStates.auraEnabled, function(v)
 		_G.N3onHub.SavedStates.auraEnabled = v
@@ -646,13 +652,13 @@ end)
 
 	-- FLING
 	local lFling = Instance.new("TextLabel", SC)
-	lFling.Size               = UDim2.new(1, 0, 0, 28)
+	lFling.Size = UDim2.new(1, 0, 0, 28)
 	lFling.BackgroundTransparency = 1
-	lFling.Text               = "🚀 Fling"
-	lFling.Font               = Enum.Font.GothamBold
-	lFling.TextSize           = 15
-	lFling.TextColor3         = Color3.fromRGB(255, 150, 50)
-	lFling.TextXAlignment     = Enum.TextXAlignment.Left
+	lFling.Text = "🚀 Fling"
+	lFling.Font = Enum.Font.GothamBold
+	lFling.TextSize = 15
+	lFling.TextColor3 = Color3.fromRGB(255, 150, 50)
+	lFling.TextXAlignment = Enum.TextXAlignment.Left
 
 	_G.N3onHub.Checkbox("Enable Fling", _G.N3onHub.SavedStates.flingEnabled, function(v)
 		_G.N3onHub.SavedStates.flingEnabled = v
@@ -666,7 +672,9 @@ end)
 	UCS()
 end
 
--- ======================== TAB: ESP ========================
+----------------------------------------------------------------
+-- TAB: ESP
+----------------------------------------------------------------
 
 local function LoadESPTab()
 	_G.N3onHub.GUI.Clear()
@@ -674,27 +682,24 @@ local function LoadESPTab()
 	local UCS = _G.N3onHub.GUI.UpdateCanvasSize
 
 	local title = Instance.new("TextLabel", SC)
-	title.Size               = UDim2.new(1, 0, 0, 40)
+	title.Size = UDim2.new(1, 0, 0, 40)
 	title.BackgroundTransparency = 1
-	title.Text               = "👁️ ESP - Slap Battles"
-	title.Font               = Enum.Font.GothamBold
-	title.TextScaled         = true
-	title.TextColor3         = Color3.fromRGB(100, 200, 255)
+	title.Text = "👁️ ESP - Slap Battles"
+	title.Font = Enum.Font.GothamBold
+	title.TextScaled = true
+	title.TextColor3 = Color3.fromRGB(100, 200, 255)
 
 	_G.N3onHub.Checkbox("ESP Ativo", _G.N3onHub.SavedStates.espEnabled, function(v)
 		_G.N3onHub.SavedStates.espEnabled = v
 		espActive = v
 		if not v then ClearAllESP() end
 	end)
-
 	_G.N3onHub.Checkbox("ESP Box (Highlight)", _G.N3onHub.SavedStates.espBoxEnabled, function(v)
 		_G.N3onHub.SavedStates.espBoxEnabled = v
 	end)
-
 	_G.N3onHub.Checkbox("ESP Nome", _G.N3onHub.SavedStates.espNameEnabled, function(v)
 		_G.N3onHub.SavedStates.espNameEnabled = v
 	end)
-
 	_G.N3onHub.Checkbox("ESP Distância", _G.N3onHub.SavedStates.espDistEnabled, function(v)
 		_G.N3onHub.SavedStates.espDistEnabled = v
 	end)
@@ -702,103 +707,32 @@ local function LoadESPTab()
 	UCS()
 end
 
--- ======================== TAB: PLAYER ========================
+----------------------------------------------------------------
+-- TAB: MISC
+----------------------------------------------------------------
 
-local function LoadPlayerTab()
+local function LoadMiscTab()
 	_G.N3onHub.GUI.Clear()
 	local SC  = _G.N3onHub.GUI.ScrollContent
 	local UCS = _G.N3onHub.GUI.UpdateCanvasSize
 
 	local title = Instance.new("TextLabel", SC)
-	title.Size               = UDim2.new(1, 0, 0, 40)
+	title.Size = UDim2.new(1, 0, 0, 40)
 	title.BackgroundTransparency = 1
-	title.Text               = "🧍 Player Mods"
-	title.Font               = Enum.Font.GothamBold
-	title.TextScaled         = true
-	title.TextColor3         = Color3.fromRGB(100, 255, 200)
-
-	-- SPEED
-	local lSpeed = Instance.new("TextLabel", SC)
-	lSpeed.Size               = UDim2.new(1, 0, 0, 28)
-	lSpeed.BackgroundTransparency = 1
-	lSpeed.Text               = "⚡ Speed"
-	lSpeed.Font               = Enum.Font.GothamBold
-	lSpeed.TextSize           = 15
-	lSpeed.TextColor3         = Color3.fromRGB(255, 255, 100)
-	lSpeed.TextXAlignment     = Enum.TextXAlignment.Left
-
-	_G.N3onHub.Checkbox("Speed Hack", _G.N3onHub.SavedStates.speedEnabled, function(v)
-		_G.N3onHub.SavedStates.speedEnabled = v
-		speedActive = v
-	end)
-
-	_G.N3onHub.Slider("WalkSpeed", 5, 200, _G.N3onHub.SavedStates.speedValue, function(v)
-		_G.N3onHub.SavedStates.speedValue = v
-	end)
-
-	-- JUMP
-	local lJump = Instance.new("TextLabel", SC)
-	lJump.Size               = UDim2.new(1, 0, 0, 28)
-	lJump.BackgroundTransparency = 1
-	lJump.Text               = "🦘 Jump"
-	lJump.Font               = Enum.Font.GothamBold
-	lJump.TextSize           = 15
-	lJump.TextColor3         = Color3.fromRGB(100, 200, 255)
-	lJump.TextXAlignment     = Enum.TextXAlignment.Left
-
-	_G.N3onHub.Checkbox("Jump Hack", _G.N3onHub.SavedStates.jumpEnabled, function(v)
-		_G.N3onHub.SavedStates.jumpEnabled = v
-		jumpActive = v
-	end)
-
-	_G.N3onHub.Slider("JumpPower", 10, 300, _G.N3onHub.SavedStates.jumpValue, function(v)
-		_G.N3onHub.SavedStates.jumpValue = v
-	end)
-
-	_G.N3onHub.Checkbox("Infinite Jump", _G.N3onHub.SavedStates.infiniteJump, function(v)
-		_G.N3onHub.SavedStates.infiniteJump = v
-		infJumpActive = v
-	end)
-
-	-- NOCLIP
-	local lNoclip = Instance.new("TextLabel", SC)
-	lNoclip.Size               = UDim2.new(1, 0, 0, 28)
-	lNoclip.BackgroundTransparency = 1
-	lNoclip.Text               = "👻 No Clip / Ghost"
-	lNoclip.Font               = Enum.Font.GothamBold
-	lNoclip.TextSize           = 15
-	lNoclip.TextColor3         = Color3.fromRGB(200, 100, 255)
-	lNoclip.TextXAlignment     = Enum.TextXAlignment.Left
-
-	_G.N3onHub.Checkbox("No Clip", _G.N3onHub.SavedStates.noclipEnabled, function(v)
-		_G.N3onHub.SavedStates.noclipEnabled = v
-		noclipActive = v
-	end)
-
-	_G.N3onHub.Checkbox("Ghost Mode (invisível)", _G.N3onHub.SavedStates.ghostEnabled, function(v)
-		_G.N3onHub.SavedStates.ghostEnabled = v
-		ghostActive = v
-		if not v then
-			local char = GetChar()
-			if char then
-				for _, part in pairs(char:GetDescendants()) do
-					if part:IsA("BasePart") then
-						pcall(function() part.LocalTransparencyModifier = 0 end)
-					end
-				end
-			end
-		end
-	end)
+	title.Text = "⚙️ Misc - Slap Battles"
+	title.Font = Enum.Font.GothamBold
+	title.TextScaled = true
+	title.TextColor3 = Color3.fromRGB(200, 200, 200)
 
 	-- ANTI KNOCKBACK
 	local lAnti = Instance.new("TextLabel", SC)
-	lAnti.Size               = UDim2.new(1, 0, 0, 28)
+	lAnti.Size = UDim2.new(1, 0, 0, 28)
 	lAnti.BackgroundTransparency = 1
-	lAnti.Text               = "🛡️ Anti Knockback"
-	lAnti.Font               = Enum.Font.GothamBold
-	lAnti.TextSize           = 15
-	lAnti.TextColor3         = Color3.fromRGB(100, 255, 100)
-	lAnti.TextXAlignment     = Enum.TextXAlignment.Left
+	lAnti.Text = "🛡️ Anti Knockback"
+	lAnti.Font = Enum.Font.GothamBold
+	lAnti.TextSize = 15
+	lAnti.TextColor3 = Color3.fromRGB(100, 255, 100)
+	lAnti.TextXAlignment = Enum.TextXAlignment.Left
 
 	_G.N3onHub.Checkbox("Anti Knockback", _G.N3onHub.SavedStates.antiKnockback, function(v)
 		_G.N3onHub.SavedStates.antiKnockback = v
@@ -807,112 +741,92 @@ local function LoadPlayerTab()
 
 	-- AUTO RESPAWN
 	local lRespawn = Instance.new("TextLabel", SC)
-	lRespawn.Size               = UDim2.new(1, 0, 0, 28)
+	lRespawn.Size = UDim2.new(1, 0, 0, 28)
 	lRespawn.BackgroundTransparency = 1
-	lRespawn.Text               = "🔄 Auto Respawn"
-	lRespawn.Font               = Enum.Font.GothamBold
-	lRespawn.TextSize           = 15
-	lRespawn.TextColor3         = Color3.fromRGB(255, 200, 100)
-	lRespawn.TextXAlignment     = Enum.TextXAlignment.Left
+	lRespawn.Text = "🔄 Auto Respawn"
+	lRespawn.Font = Enum.Font.GothamBold
+	lRespawn.TextSize = 15
+	lRespawn.TextColor3 = Color3.fromRGB(255, 200, 100)
+	lRespawn.TextXAlignment = Enum.TextXAlignment.Left
 
 	_G.N3onHub.Checkbox("Auto Respawn (ao morrer)", _G.N3onHub.SavedStates.autoRespawn, function(v)
 		_G.N3onHub.SavedStates.autoRespawn = v
 		autoRespawnActive = v
 	end)
 
-	UCS()
-end
-
--- ======================== TAB: MISC ========================
-
-local function LoadMiscTab()
-	_G.N3onHub.GUI.Clear()
-	local SC  = _G.N3onHub.GUI.ScrollContent
-	local UCS = _G.N3onHub.GUI.UpdateCanvasSize
-
-	local title = Instance.new("TextLabel", SC)
-	title.Size               = UDim2.new(1, 0, 0, 40)
-	title.BackgroundTransparency = 1
-	title.Text               = "⚙️ Misc"
-	title.Font               = Enum.Font.GothamBold
-	title.TextScaled         = true
-	title.TextColor3         = Color3.fromRGB(200, 200, 200)
-
 	-- CLICK TP
 	local lCTP = Instance.new("TextLabel", SC)
-	lCTP.Size               = UDim2.new(1, 0, 0, 28)
+	lCTP.Size = UDim2.new(1, 0, 0, 28)
 	lCTP.BackgroundTransparency = 1
-	lCTP.Text               = "🖱️ Click TP"
-	lCTP.Font               = Enum.Font.GothamBold
-	lCTP.TextSize           = 15
-	lCTP.TextColor3         = Color3.fromRGB(255, 200, 50)
-	lCTP.TextXAlignment     = Enum.TextXAlignment.Left
+	lCTP.Text = "🖱️ Click TP"
+	lCTP.Font = Enum.Font.GothamBold
+	lCTP.TextSize = 15
+	lCTP.TextColor3 = Color3.fromRGB(255, 200, 50)
+	lCTP.TextXAlignment = Enum.TextXAlignment.Left
 
-	local ctpInfo = Instance.new("TextLabel", SC)
-	ctpInfo.Size               = UDim2.new(1, 0, 0, 35)
-	ctpInfo.BackgroundTransparency = 1
-	ctpInfo.Text               = "Clique no chão pra teleportar pra posição."
-	ctpInfo.Font               = Enum.Font.Gotham
-	ctpInfo.TextScaled         = true
-	ctpInfo.TextColor3         = Color3.fromRGB(160, 160, 160)
-	ctpInfo.TextXAlignment     = Enum.TextXAlignment.Left
-	ctpInfo.TextWrapped        = true
-
-	_G.N3onHub.Checkbox("Click TP", _G.N3onHub.SavedStates.clickTpEnabled, function(v)
+	_G.N3onHub.Checkbox("Click TP (clique no chão)", _G.N3onHub.SavedStates.clickTpEnabled, function(v)
 		_G.N3onHub.SavedStates.clickTpEnabled = v
 		clickTpActive = v
 		if v then EnableClickTP() else DisableClickTP() end
 	end)
 
--- SAFE ZONE
-local lSafe = Instance.new("TextLabel", SC)
-lSafe.Size               = UDim2.new(1, 0, 0, 28)
-@@ -309,13 +901,45 @@ local function LoadSlapBattlesFarm()
-Instance.new("UICorner", tpBtn)
-tpBtn.MouseButton1Click:Connect(TeleportToSafeZone)
+	-- SAFE ZONE
+	local lSafe = Instance.new("TextLabel", SC)
+	lSafe.Size = UDim2.new(1, 0, 0, 28)
+	lSafe.BackgroundTransparency = 1
+	lSafe.Text = "🟢 Safe Zone"
+	lSafe.Font = Enum.Font.GothamBold
+	lSafe.TextSize = 15
+	lSafe.TextColor3 = Color3.fromRGB(100, 255, 100)
+	lSafe.TextXAlignment = Enum.TextXAlignment.Left
 
-	-- TP para jogador
-	local lTPPlr = Instance.new("TextLabel", SC)
-	lTPPlr.Size               = UDim2.new(1, 0, 0, 28)
-	lTPPlr.BackgroundTransparency = 1
-	lTPPlr.Text               = "🎯 TP para jogador mais próximo"
-	lTPPlr.Font               = Enum.Font.GothamBold
-	lTPPlr.TextSize           = 15
-	lTPPlr.TextColor3         = Color3.fromRGB(100, 180, 255)
-	lTPPlr.TextXAlignment     = Enum.TextXAlignment.Left
+	local safeInfo = Instance.new("TextLabel", SC)
+	safeInfo.Size = UDim2.new(1, 0, 0, 35)
+	safeInfo.BackgroundTransparency = 1
+	safeInfo.Text = "Plataforma criada em Y=500, Z=99999.\nNinguém consegue te alcançar lá."
+	safeInfo.Font = Enum.Font.Gotham
+	safeInfo.TextScaled = true
+	safeInfo.TextColor3 = Color3.fromRGB(160, 160, 160)
+	safeInfo.TextXAlignment = Enum.TextXAlignment.Left
+	safeInfo.TextWrapped = true
+
+	local tpBtn = Instance.new("TextButton", SC)
+	tpBtn.Size = UDim2.new(1, 0, 0, 40)
+	tpBtn.Text = "🟢 TP to Safe Zone"
+	tpBtn.Font = Enum.Font.GothamBold
+	tpBtn.TextSize = 14
+	tpBtn.BackgroundColor3 = Color3.fromRGB(30, 130, 30)
+	tpBtn.TextColor3 = Color3.new(1, 1, 1)
+	Instance.new("UICorner", tpBtn)
+	tpBtn.MouseButton1Click:Connect(TeleportToSafeZone)
 
 	local tpPlrBtn = Instance.new("TextButton", SC)
-	tpPlrBtn.Size             = UDim2.new(1, 0, 0, 40)
-	tpPlrBtn.Text             = "🎯 TP to Closest Player"
-	tpPlrBtn.Font             = Enum.Font.GothamBold
-	tpPlrBtn.TextSize         = 14
+	tpPlrBtn.Size = UDim2.new(1, 0, 0, 40)
+	tpPlrBtn.Text = "🎯 TP to Closest Player"
+	tpPlrBtn.Font = Enum.Font.GothamBold
+	tpPlrBtn.TextSize = 14
 	tpPlrBtn.BackgroundColor3 = Color3.fromRGB(30, 80, 160)
-	tpPlrBtn.TextColor3       = Color3.new(1, 1, 1)
+	tpPlrBtn.TextColor3 = Color3.new(1, 1, 1)
 	Instance.new("UICorner", tpPlrBtn)
 	tpPlrBtn.MouseButton1Click:Connect(function()
-		local target = GetClosestFling()
+		local target = GetClosestPlayer()
 		if target and target.Character then
-			local hrp  = GetHRP()
+			local hrp = GetHRP()
 			local tHRP = target.Character:FindFirstChild("HumanoidRootPart")
-			if hrp and tHRP then
-				hrp.CFrame = tHRP.CFrame + Vector3.new(0, 3, 0)
-			end
+			if hrp and tHRP then hrp.CFrame = tHRP.CFrame + Vector3.new(0, 3, 0) end
 		end
 	end)
 
-UCS()
+	UCS()
 end
 
 ----------------------------------------------------------------
--- REGISTER
--- REGISTER TABS
+-- REGISTRAR TABS
+-- O 3º argumento é ignorado pelo base (Y automático)
 ----------------------------------------------------------------
 
-_G.N3onHub.Tab("Farm", "👏", 160, LoadSlapBattlesFarm)
-_G.N3onHub.Tab("Farm",   "👏", 160, LoadFarmTab)
-_G.N3onHub.Tab("ESP",    "👁️",  160, LoadESPTab)
-_G.N3onHub.Tab("Player", "🧍", 160, LoadPlayerTab)
-_G.N3onHub.Tab("Misc",   "⚙️",  160, LoadMiscTab)
+_G.N3onHub.Tab("Farm", "👏", 0, LoadFarmTab)
+_G.N3onHub.Tab("ESP",  "👁️", 0, LoadESPTab)
+_G.N3onHub.Tab("Misc", "⚙️", 0, LoadMiscTab)
 
-print("[Slap Battles Module] Loaded! Safe Zone criada automaticamente.")
-print("[Slap Battles Module] Loaded! Todas as features ativas.")
+print("[Slap Battles Module] Loaded!")
