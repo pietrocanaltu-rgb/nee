@@ -22,7 +22,6 @@ _G.N3onHub.SavedStates.farmSpeed     = 30
 _G.N3onHub.SavedStates.hitboxEnabled = false
 _G.N3onHub.SavedStates.hitboxSize    = 15
 _G.N3onHub.SavedStates.hitboxTrans   = 0.9
-_G.N3onHub.SavedStates.teamCheck     = false
 
 local autoFarmActive  = false
 local hitboxActive    = false
@@ -80,61 +79,40 @@ local function TeleportToSafeZone()
 end
 
 ----------------------------------------------------------------
--- HITBOX EXPANDER (IGUAL AO SCRIPT REFERÊNCIA - RENDERSTEP)
+-- HITBOX EXPANDER (IGUAL AO SCRIPT REFERÊNCIA)
 ----------------------------------------------------------------
 
-local function StartHitbox()
-	-- Evitar duplo connect
-	if hitboxConn then
-		hitboxConn:Disconnect()
-		hitboxConn = nil
-	end
-
-	hitboxConn = RunService.RenderStepped:Connect(function()
-		if not hitboxActive then return end
-
-		for _, plr in next, Players:GetPlayers() do
-			if plr.Name == Player.Name then continue end
-
-			-- Team Check
-			if _G.N3onHub.SavedStates.teamCheck then
-				if Player.Team == plr.Team then continue end
+-- RenderStepped sempre rodando, checa hitboxActive igual o original checa HitboxStatus
+RunService.RenderStepped:Connect(function()
+	if hitboxActive then
+		for i, v in next, Players:GetPlayers() do
+			if v.Name ~= Player.Name then
+				pcall(function()
+					v.Character.HumanoidRootPart.Size = Vector3.new(_G.N3onHub.SavedStates.hitboxSize, _G.N3onHub.SavedStates.hitboxSize, _G.N3onHub.SavedStates.hitboxSize)
+					v.Character.HumanoidRootPart.Transparency = _G.N3onHub.SavedStates.hitboxTrans
+					v.Character.HumanoidRootPart.BrickColor = BrickColor.new("Really black")
+					v.Character.HumanoidRootPart.Material = "Neon"
+					v.Character.HumanoidRootPart.CanCollide = false
+				end)
 			end
-
-			pcall(function()
-				local hrp = plr.Character.HumanoidRootPart
-				local s   = _G.N3onHub.SavedStates.hitboxSize
-				local t   = _G.N3onHub.SavedStates.hitboxTrans
-
-				hrp.Size         = Vector3.new(s, s, s)
-				hrp.Transparency = t
-				hrp.BrickColor   = BrickColor.new("Really black")
-				hrp.Material     = Enum.Material.Neon
-				hrp.CanCollide   = false
-			end)
 		end
-	end)
-end
-
-local function StopHitbox()
-	if hitboxConn then
-		hitboxConn:Disconnect()
-		hitboxConn = nil
+	else
+		for i, v in next, Players:GetPlayers() do
+			if v.Name ~= Player.Name then
+				pcall(function()
+					v.Character.HumanoidRootPart.Size = Vector3.new(2, 2, 1)
+					v.Character.HumanoidRootPart.Transparency = 1
+					v.Character.HumanoidRootPart.BrickColor = BrickColor.new("Medium stone grey")
+					v.Character.HumanoidRootPart.Material = "Plastic"
+					v.Character.HumanoidRootPart.CanCollide = false
+				end)
+			end
+		end
 	end
+end)
 
-	-- Restaurar igual script referência
-	for _, plr in next, Players:GetPlayers() do
-		if plr.Name == Player.Name then continue end
-		pcall(function()
-			local hrp = plr.Character.HumanoidRootPart
-			hrp.Size         = Vector3.new(2, 2, 1)
-			hrp.Transparency = 1
-			hrp.BrickColor   = BrickColor.new("Medium stone grey")
-			hrp.Material     = Enum.Material.Plastic
-			hrp.CanCollide   = false
-		end)
-	end
-end
+local function StartHitbox() hitboxActive = true end
+local function StopHitbox()  hitboxActive = false end
 
 ----------------------------------------------------------------
 -- AUTO CLICK
@@ -290,10 +268,6 @@ local function LoadSlapBattlesFarm()
 		_G.N3onHub.SavedStates.hitboxEnabled = v
 		hitboxActive = v
 		if v then StartHitbox() else StopHitbox() end
-	end)
-
-	_G.N3onHub.Checkbox("Team Check", _G.N3onHub.SavedStates.teamCheck, function(v)
-		_G.N3onHub.SavedStates.teamCheck = v
 	end)
 
 	_G.N3onHub.Slider("Hitbox Size", 5, 60, _G.N3onHub.SavedStates.hitboxSize, function(v)
