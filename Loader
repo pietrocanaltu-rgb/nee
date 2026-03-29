@@ -35,6 +35,8 @@ elseif placeId == 537413528 then
     SafeLoad("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_buildaboat.lua")
 elseif placeId == 6403373529 then
     SafeLoad("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/SlapBattles.Lua")
+elseif placeId == 8260276694 then
+    SafeLoad("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/AbilityWars.Lua")
 else
     print("Jogo não suportado: " .. placeId)
 end
