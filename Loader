@@ -17,7 +17,7 @@ local function SafeLoad(url)
 end
 
 -- Carregar base
-SafeLoad("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_base.lua")
+SafeLoad("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/Zuno_hub_base.lua")
 
 -- Espera curta para garantir que a base carregou
 local timeout = 0
@@ -30,9 +30,9 @@ end
 local placeId = game.PlaceId
 
 if placeId == 2753915549 or placeId == 4442272183 or placeId == 7449423635 then
-    SafeLoad("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_bloxfruits.lua")
+    SafeLoad("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/Zuno_hub_bloxfruits.lua")
 elseif placeId == 537413528 then
-    SafeLoad("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/n3on_hub_buildaboat.lua")
+    SafeLoad("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/Zuno_hub_buildaboat.lua")
 elseif placeId == 6403373529 then
     SafeLoad("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/SlapBattles.Lua")
 elseif placeId == 8260276694 then
