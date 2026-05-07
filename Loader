@@ -38,7 +38,7 @@ local jogoId = game.UniverseId   -- substitua por game.GameId se preferir (mas U
 print("UniverseId detectado:", jogoId)
 
 -- Carregar módulo específico do jogo
-if jogoId == 8260276694 then          -- Substitua pelo UniverseId correto do jogo "King"
+if jogoId == 4520749081 then          -- Substitua pelo UniverseId correto do jogo "King"
     SafeLoad("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/King.Lua")
 elseif jogoId == 16480898254 then     -- Substitua pelo UniverseId correto do jogo "ETW"
     SafeLoad("https://raw.githubusercontent.com/pietrocanaltu-rgb/nee/refs/heads/main/ETW.Lua")
